@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>個人專屬題庫系統</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="app-container">
+        <header>
+            <button class="menu-btn">☰</button>
+            <span id="app-title">首頁</span>
+        </header>
+
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">選單</div>
+            <ul class="sidebar-menu">
+                <li id="nav-home">🏠 回到首頁 / 開始測驗</li>
+                <li id="nav-upload">📥 載入題庫 (JSON)</li>
+                <li id="nav-records">📊 查看題庫</li>
+                <li id="nav-clear-fails" class="danger">🧹 清空錯題紀錄</li>
+                <li id="nav-clear-all" class="danger">⚠️ 清空所有資料</li>
+            </ul>
+            <input type="file" id="file-upload" accept=".json" style="display: none;">
+        </nav>
+        <div class="overlay" id="overlay"></div>
+
+        <!-- 匯入 Modal -->
+        <div class="modal" id="import-modal">
+            <div class="modal-header">匯入題庫</div>
+            <div class="modal-body">
+                <div class="tab-container">
+                    <div class="tab active" data-tab="file">檔案上傳</div>
+                    <div class="tab" data-tab="paste">文字貼上</div>
+                </div>
+
+                <div id="tab-file-content" class="tab-content active">
+                    <label class="file-drop-zone" for="modal-file-upload">
+                        <span>點擊選擇 JSON 檔案</span>
+                        <input type="file" id="modal-file-upload" accept=".json">
+                    </label>
+                    <div id="file-info" class="info-text"></div>
+                </div>
+
+                <div id="tab-paste-content" class="tab-content">
+                    <textarea id="import-paste-area" placeholder="在此貼上 JSON 格式的題庫資料..."></textarea>
+                </div>
+
+                <div class="import-config">
+                    <label>選擇目標題庫：</label>
+                    <select id="bank-select">
+                        <option value="new">+ 建立新題庫</option>
+                    </select>
+                    <input type="text" id="new-bank-name" placeholder="請輸入新題庫名稱">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary" id="import-cancel">取消</button>
+                <button class="modal-btn primary" id="import-confirm">確認匯入</button>
+            </div>
+        </div>
+
+        <!-- 編輯 Modal -->
+        <div class="modal" id="edit-modal">
+            <div class="modal-header">編輯題目</div>
+            <div class="modal-body">
+                <div class="config-group">
+                    <label>題目文字</label>
+                    <textarea id="edit-question-text" rows="3"></textarea>
+                </div>
+                <div class="config-group">
+                    <label>選項 (勾選代表正確答案)</label>
+                    <div id="edit-options-list" class="options-edit-list">
+                        <!-- 動態產生選項欄位 -->
+                    </div>
+                </div>
+                <div class="config-group">
+                    <label>說明文字 (詳解)</label>
+                    <textarea id="edit-description" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary" id="edit-cancel">取消</button>
+                <button class="modal-btn primary" id="edit-save">儲存修改</button>
+            </div>
+        </div>
+
+        <main>
+            <div id="view-home" class="card">
+                <h2 style="text-align: center; margin-bottom: 20px;">歡迎使用題庫系統</h2>
+
+                <div id="quiz-config-area" class="hidden">
+                    <div class="config-group">
+                        <label>出題範圍</label>
+                        <select id="config-scope">
+                            <option value="all">全部題庫</option>
+                            <option value="bank">指定題庫</option>
+                        </select>
+                    </div>
+
+                    <div id="config-bank-wrapper" class="config-group hidden">
+                        <label>選擇題庫</label>
+                        <select id="config-bank-select"></select>
+                    </div>
+
+                    <div class="config-group">
+                        <label>出題模式</label>
+                        <select id="config-mode">
+                            <option value="unanswered">未答優先</option>
+                            <option value="wrong">錯題優先</option>
+                            <option value="random">完全隨機</option>
+                        </select>
+                    </div>
+
+                    <button id="start-btn" class="action-btn" style="margin-top: 20px;">開始測驗</button>
+                </div>
+
+                <p style="color: var(--text-light); text-align: center; margin: 15px 0;" id="home-status">正在檢查資料庫...</p>
+            </div>
+
+            <div id="view-quiz" class="hidden">
+                <div class="card">
+                    <div class="quiz-header">
+                        <span id="quiz-bank-name">題庫：無</span>
+                        <span id="quiz-progress">題號：0</span>
+                        <span id="quiz-stats-count">次數：0</span>
+                    </div>
+                    <div id="question-text" class="question-text">題目載入中...</div>
+                    <div id="options-container" class="options-list"></div>
+
+                    <div id="feedback-box" class="feedback-box">
+                        <div id="feedback-title" class="feedback-title"></div>
+                        <div id="feedback-desc" style="color: var(--text-light); line-height: 1.5;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-records" class="hidden">
+                <div class="card">
+                    <div class="config-group">
+                        <label>篩選題庫</label>
+                        <select id="record-bank-filter">
+                            <option value="all">全部題庫</option>
+                        </select>
+                    </div>
+                    <div class="config-group">
+                        <label>排序方式</label>
+                        <select id="record-sort-filter">
+                            <option value="num-asc">題號 (由小到大)</option>
+                            <option value="fail-desc">錯題次數 (由多到少)</option>
+                        </select>
+                    </div>
+                    <div id="records-container"></div>
+                </div>
+            </div>
+        </main>
+
+        <div class="bottom-bar" id="bottom-bar">
+            <button id="confirm-btn" class="action-btn" disabled>請先選擇選項</button>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+
+</html>
