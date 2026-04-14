@@ -2,7 +2,11 @@
 
 考前臨時抱 AI 腳、vibe code 出的純前端刷題工具。
 
-## 啟動 server
+## 線上使用
+
+[Frontend Quizbank](https://chuan13.github.com/frontend-quizbank)
+
+## 啟動本地 server
 
 ### 1. VS Code Live Server
 
