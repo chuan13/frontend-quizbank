@@ -644,8 +644,16 @@ function handleConfirm() {
 /* =========================================
    初始化與事件綁定
    ========================================= */
+function setViewportHeight() {
+    let vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initDB();
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
+    window.addEventListener('orientationchange', setViewportHeight);
 
     // 側邊欄開關與遮罩點擊
     document.querySelector('.menu-btn').addEventListener('click', toggleSidebar);
