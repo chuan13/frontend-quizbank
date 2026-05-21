@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Part1 - 測驗</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <a href="../index.html" class="back-btn">← 首頁</a>
+            <span>測驗</span>
+            <span class="spacer"></span>
+        </header>
+
+        <main>
+            <div id="view-config" class="card">
+                <h2>開始測驗</h2>
+                <p id="empty-hint" class="hint hidden">目前資料庫沒有題目，請先到「JSON 匯入」或「題庫管理」新增。</p>
+
+                <div id="config-area" class="hidden">
+                    <div class="config-group">
+                        <label>出題範圍</label>
+                        <select id="config-scope">
+                            <option value="all">全部題庫</option>
+                            <option value="bank">指定題庫</option>
+                        </select>
+                    </div>
+
+                    <div id="config-bank-wrapper" class="config-group hidden">
+                        <label>選擇題庫</label>
+                        <select id="config-bank-select"></select>
+                    </div>
+
+                    <div class="config-group">
+                        <label>出題模式</label>
+                        <select id="config-mode">
+                            <option value="unanswered">未答優先</option>
+                            <option value="wrong">錯題優先</option>
+                            <option value="random">完全隨機</option>
+                        </select>
+                    </div>
+
+                    <button id="start-btn" class="action-btn">開始測驗</button>
+                </div>
+            </div>
+
+            <div id="view-quiz" class="card hidden">
+                <div class="quiz-header">
+                    <span id="quiz-bank-name">題庫：無</span>
+                    <span id="quiz-progress">題號：0</span>
+                    <span id="quiz-stats-count">次數：0</span>
+                </div>
+                <div id="question-text" class="question-text">題目載入中...</div>
+                <div id="options-container" class="options-list"></div>
+
+                <div id="feedback-box" class="feedback-box">
+                    <div id="feedback-title" class="feedback-title"></div>
+                    <div id="feedback-desc"></div>
+                </div>
+            </div>
+        </main>
+
+        <div class="bottom-bar" id="bottom-bar">
+            <button id="confirm-btn" class="action-btn" disabled>請先選擇選項</button>
+        </div>
+    </div>
+
+    <script src="../shared/db.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

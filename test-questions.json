@@ -1,0 +1,102 @@
+[
+  {
+    "question": "在 Vue 3 Composition API 中，下列哪一個函式用來建立「響應式的基本型別」變數？",
+    "options": [
+      { "order": 0, "text": "reactive()" },
+      { "order": 0, "text": "ref()", "true": true },
+      { "order": 0, "text": "computed()" },
+      { "order": 0, "text": "watch()" }
+    ],
+    "description": "ref() 用於包裝基本型別（string、number、boolean 等）使其成為響應式；reactive() 則用於物件。computed() 是衍生值，watch() 是副作用。"
+  },
+  {
+    "question": "下列哪一個 CSS 屬性可以讓元素在 Flex 容器內沿主軸方向均勻分散且兩端不留空？",
+    "options": [
+      { "order": 0, "text": "justify-content: space-around" },
+      { "order": 0, "text": "justify-content: space-evenly" },
+      { "order": 0, "text": "justify-content: space-between", "true": true },
+      { "order": 0, "text": "align-items: stretch" }
+    ],
+    "description": "space-between 會將子元素平均分散，並使首尾元素緊貼容器邊緣，中間留出等距空白。"
+  },
+  {
+    "question": "Tailwind CSS v4.1 採用 CSS-first 配置，下列哪個指令用來在 CSS 內定義自訂主題變數？",
+    "options": [
+      { "order": 0, "text": "@apply" },
+      { "order": 0, "text": "@layer" },
+      { "order": 0, "text": "@theme", "true": true },
+      { "order": 0, "text": "@variants" }
+    ],
+    "description": "Tailwind v4 引入 @theme 指令，可直接在 CSS 中宣告設計 token（顏色、字型、間距等），取代舊版的 tailwind.config.js。"
+  },
+  {
+    "question": "JavaScript 中下列哪一個運算結果為 true？",
+    "options": [
+      { "order": 0, "text": "0 === '0'" },
+      { "order": 0, "text": "null == undefined", "true": true },
+      { "order": 0, "text": "NaN === NaN" },
+      { "order": 0, "text": "[] === []" }
+    ],
+    "description": "null == undefined 在寬鬆比較下為 true（兩者互相相等）；NaN 不等於自己；陣列是參考型別比較。"
+  },
+  {
+    "question": "下列關於 TypeScript 的敘述何者正確？",
+    "options": [
+      { "order": 0, "text": "TypeScript 在執行時會進行型別檢查" },
+      { "order": 0, "text": "interface 與 type 在所有情境下完全相同" },
+      { "order": 0, "text": "TypeScript 編譯後會輸出 JavaScript，瀏覽器不會直接執行 TS", "true": true },
+      { "order": 0, "text": "TypeScript 的 any 與 unknown 行為完全相同" }
+    ],
+    "description": "TypeScript 是編譯期靜態檢查語言，最終會被編譯為 JavaScript 才能在瀏覽器或 Node 執行。any 不檢查、unknown 需先收斂型別。"
+  },
+  {
+    "question": "HTTP 狀態碼 304 代表什麼意義？",
+    "options": [
+      { "order": 0, "text": "請求成功，回傳新資源" },
+      { "order": 0, "text": "資源未被修改，使用快取版本", "true": true },
+      { "order": 0, "text": "請求未授權" },
+      { "order": 0, "text": "伺服器內部錯誤" }
+    ],
+    "description": "304 Not Modified 用於條件式請求（If-None-Match / If-Modified-Since），表示資源未變動，客戶端可直接使用本地快取。"
+  },
+  {
+    "question": "在 React 中，useEffect 的 cleanup 函式會在何時被執行？",
+    "options": [
+      { "order": 1, "text": "元件首次掛載前" },
+      { "order": 2, "text": "每次重新渲染後立即執行" },
+      { "order": 3, "text": "元件卸載時，以及下一次 effect 執行前", "true": true },
+      { "order": 4, "text": "以上皆非" }
+    ],
+    "description": "useEffect 回傳的清理函式會在元件卸載、或依賴變動而要重新執行 effect 之前被呼叫，用於釋放訂閱、計時器等資源。"
+  },
+  {
+    "question": "下列哪一個「不是」 JavaScript 的原始型別 (primitive)？",
+    "options": [
+      { "order": 0, "text": "string" },
+      { "order": 0, "text": "number" },
+      { "order": 0, "text": "symbol" },
+      { "order": 1, "text": "object", "true": true }
+    ],
+    "description": "JavaScript 的原始型別共有 7 種：string、number、boolean、null、undefined、symbol、bigint。object 屬於參考型別 (reference type)。"
+  },
+  {
+    "question": "關於 Git，下列哪個指令會「重寫提交歷史」？",
+    "options": [
+      { "order": 0, "text": "git status" },
+      { "order": 0, "text": "git fetch" },
+      { "order": 0, "text": "git rebase", "true": true },
+      { "order": 0, "text": "git log" }
+    ],
+    "description": "git rebase 會將一系列提交重新套用到另一個基底，過程中會產生新的 commit SHA，等同重寫歷史；status/fetch/log 都是讀取操作。"
+  },
+  {
+    "question": "下列哪個 SQL 子句用來「過濾分組後的結果」？",
+    "options": [
+      { "order": 0, "text": "WHERE" },
+      { "order": 0, "text": "GROUP BY" },
+      { "order": 0, "text": "HAVING", "true": true },
+      { "order": 0, "text": "ORDER BY" }
+    ],
+    "description": "WHERE 在分組前過濾原始列；HAVING 則在 GROUP BY 後過濾彙總結果（例如 HAVING COUNT(*) > 1）。"
+  }
+]

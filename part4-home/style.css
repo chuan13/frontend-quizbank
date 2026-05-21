@@ -1,0 +1,103 @@
+:root {
+    --primary: #64b5f6;
+    --success: #81c784;
+    --error: #e57373;
+    --bg: #121212;
+    --card-bg: #1e1e1e;
+    --text: #e0e0e0;
+    --text-light: #a0a0a0;
+    --border: #333333;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+html, body { min-height: 100vh; background: #000; color: var(--text); }
+body { display: flex; justify-content: center; }
+
+.app-container {
+    width: 100%;
+    max-width: 480px;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+header {
+    background: #2c2c2c;
+    color: var(--primary);
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 1.15rem;
+    font-weight: bold;
+    border-bottom: 1px solid var(--border);
+}
+.back-btn { color: var(--primary); text-decoration: none; font-size: 0.9rem; font-weight: normal; }
+.spacer { width: 50px; }
+
+main { flex: 1; padding: 20px; }
+
+.card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+}
+
+.card h2 { color: var(--primary); font-size: 1.1rem; margin-bottom: 12px; }
+.card h3 { color: var(--text-light); font-size: 0.95rem; margin-bottom: 8px; }
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+}
+.stat-row:last-of-type { border-bottom: none; }
+.stat-row b { color: var(--primary); }
+
+.bank-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.bank-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-light);
+}
+.bank-list li:last-child { border-bottom: none; }
+.bank-list li b { color: var(--text); }
+
+.danger-btn {
+    width: 100%;
+    padding: 13px;
+    border: 1px solid var(--error);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--error);
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: 0.2s;
+}
+.danger-btn:hover { background: rgba(229,115,115,0.1); }
+
+.danger-btn.danger-strong {
+    background: var(--error);
+    color: #fff;
+}
+.danger-btn.danger-strong:hover { filter: brightness(1.1); background: var(--error); }
+
+.hint-text {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin: 6px 4px 4px;
+}
