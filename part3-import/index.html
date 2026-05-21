@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Part3 - JSON 匯入</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <a href="../index.html" class="back-btn">← 首頁</a>
+            <span>JSON 匯入</span>
+            <span class="spacer"></span>
+        </header>
+
+        <main>
+            <div class="card">
+                <div class="tab-container">
+                    <div class="tab active" data-tab="file">檔案上傳</div>
+                    <div class="tab" data-tab="paste">文字貼上</div>
+                </div>
+
+                <div id="tab-file-content" class="tab-content active">
+                    <label class="file-drop-zone" for="file-upload">
+                        <span>點擊選擇 JSON 檔案</span>
+                        <input type="file" id="file-upload" accept=".json" hidden>
+                    </label>
+                    <div id="file-info" class="info-text"></div>
+                </div>
+
+                <div id="tab-paste-content" class="tab-content">
+                    <textarea id="paste-area" placeholder="在此貼上 JSON 格式的題庫資料..."></textarea>
+                </div>
+
+                <div class="config-group">
+                    <label>目標題庫</label>
+                    <select id="bank-select">
+                        <option value="new">+ 建立新題庫</option>
+                    </select>
+                    <input type="text" id="new-bank-name" placeholder="請輸入新題庫名稱">
+                </div>
+
+                <button id="import-btn" class="action-btn">確認匯入</button>
+            </div>
+
+            <p class="hint">JSON 格式請參考根目錄的 <code>question-format.md</code>。</p>
+        </main>
+    </div>
+
+    <script src="../shared/db.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
