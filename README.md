@@ -1,6 +1,6 @@
 # Frontend Quizbank
 
-純前端 IndexedDB 題庫系統。四個功能（測驗 / 題庫管理 / JSON 匯入 / 狀態維護）原由四人分組開發，現已整併為**單一頁面應用（SPA）**：一個 `index.html` + 一個 `app.css` + 一個 `app.js`。
+純前端 IndexedDB 題庫刷題系統。
 
 ## 線上使用
 
@@ -20,14 +20,13 @@ pnpm dlx serve
 # 方式 3：VS Code Live Server
 ```
 
-開啟 http://localhost:8000/
 
 ## 部署（GitHub Pages）
 
 本專案為純靜態網站，採用 **GitHub Pages** 部署，無需建置流程與伺服器：
 
 1. 將 `index.html`、`app.css`、`app.js` 推送到 GitHub repository。
-2. 進入 repository 的 **Settings → Pages**，選擇發佈分支（例如 `main` 的 root）。
+2. 進入 repository 的 **Settings → Pages**，選擇發佈分支（例如 `master` 的 root）。
 3. GitHub 自動建置並發佈，取得 `https://<帳號>.github.io/<repo>/` 網址（預設提供 HTTPS）。
 
 > 資料存於使用者瀏覽器的 IndexedDB，伺服器端不保存任何資料，因此部署近乎零成本。
@@ -44,15 +43,6 @@ frontend-quizbank/
 ```
 
 整個系統是單一 SPA，`app.js` 內以獨立模組（IIFE）封裝四個功能，避免全域命名衝突；切換頁面由 `Router` 控制，資料統一存於同一個 IndexedDB（QuizDB），任一功能寫入的題庫資料其他功能都看得到。
-
-## 分工（原始開發）
-
-| 功能 | 負責人 | 內容 | 主要 DB API |
-|------|------|------|-----------|
-| **測驗 (Quiz)** | 成員 A | 出題設定、抽題、答題、回饋 | `getAll`, `updateStats` |
-| **題庫管理 (Bank)** | 成員 B | 查看／篩選／排序／編輯／UI 新增題目 | `getAll`, `update`, `add`, `getBanks` |
-| **JSON 匯入 (Importer)** | 成員 C | 檔案 / 貼上文字匯入 JSON | `addBatch`, `getBanks` |
-| **狀態維護 (Maint)** | 成員 D | DB 狀態、清空錯題、清空全部 | `getAll`, `resetAllFails`, `clearAll` |
 
 ## 共用 API（`app.js` 內 `QuizDB` 模組）
 
