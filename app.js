@@ -12,6 +12,35 @@
    原本都有 refresh()）。各 part 對外只暴露 init() 與 onShow()。
    ========================================================================= */
 
+/* =========================================================================
+   KaTeX 渲染輔助函式
+   ========================================================================= */
+
+/**
+ * 渲染指定 HTML 元素中的 LaTeX 數學公式。
+ * 內部呼叫 KaTeX 提供的 renderMathInElement API，如果 KaTeX 資源尚未載入則不執行任何動作。
+ *
+ * @param {HTMLElement} element - 需要進行 LaTeX 渲染的 HTML 元素節點。
+ * @returns {void}
+ */
+function renderMath(element) {
+    if (typeof renderMathInElement === 'function') {
+        try {
+            renderMathInElement(element, {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '$', right: '$', display: false },
+                    { left: '\\(', right: '\\)', display: false },
+                    { left: '\\[', right: '\\]', display: true }
+                ],
+                throwOnError: false
+            });
+        } catch (error) {
+            console.error('KaTeX 渲染時發生錯誤：', error);
+        }
+    }
+}
+
 /* =========================================
    1. 共用 IndexedDB 資料層 (window.QuizDB)
    ========================================= */
@@ -266,7 +295,11 @@ const Quiz = (function () {
         document.getElementById('quiz-bank-name').textContent = `題庫：${currentQ.questionBank}`;
         document.getElementById('quiz-progress').textContent = `題號：${currentQ.questionNumber}`;
         document.getElementById('quiz-stats-count').textContent = `次數：${currentQ.correct + currentQ.fail}`;
-        document.getElementById('question-text').textContent = currentQ.question;
+        
+        const qEl = document.getElementById('question-text');
+        qEl.textContent = currentQ.question;
+        renderMath(qEl);
+        
         document.getElementById('feedback-box').classList.remove('show');
 
         const btn = document.getElementById('confirm-btn');
@@ -284,8 +317,10 @@ const Quiz = (function () {
             const optBtn = document.createElement('button');
             optBtn.className = 'option-btn';
             optBtn.textContent = option.text;
+            /** @type {any} */ (optBtn)._optionData = option; // 為了在 JS 中暫存選項資料
             optBtn.onclick = () => selectOption(optBtn, option);
             container.appendChild(optBtn);
+            renderMath(optBtn);
         });
     }
 
@@ -308,7 +343,7 @@ const Quiz = (function () {
 
             document.querySelectorAll('.option-btn').forEach(btn => {
                 btn.disabled = true;
-                const od = currentQ.options.find(o => o.text === btn.textContent);
+                const od = /** @type {any} */ (btn)._optionData;
                 if (od && od.true === true) btn.classList.add('correct');
             });
             if (!isCorrect) {
@@ -324,7 +359,11 @@ const Quiz = (function () {
                 ft.textContent = '❌ 答錯了！';
                 ft.className = 'feedback-title error';
             }
-            document.getElementById('feedback-desc').textContent = currentQ.description || '無詳解';
+            
+            const fdEl = document.getElementById('feedback-desc');
+            fdEl.textContent = currentQ.description || '無詳解';
+            renderMath(fdEl);
+            
             document.getElementById('feedback-box').classList.add('show');
 
             cb.textContent = '下一題';
