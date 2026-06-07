@@ -704,7 +704,7 @@ const Importer = (function () {
                 if (!Array.isArray(json)) throw new Error('需為陣列');
                 pendingData = json;
                 fileInfo.textContent = `已選擇：${file.name}（${json.length} 題）`;
-                if (bankSelect.value === 'new' && !newBankInput.value) {
+                if (bankSelect.value === 'new') {
                     newBankInput.value = file.name.replace(/\.json$/i, '');
                 }
             } catch (err) {
@@ -741,6 +741,7 @@ const Importer = (function () {
             alert(`成功匯入「${bank}」共 ${count} 題！`);
             pasteArea.value = '';
             fileInput.value = '';
+            newBankInput.value = '';
             fileInfo.textContent = '';
             pendingData = null;
             await refreshBanks();
