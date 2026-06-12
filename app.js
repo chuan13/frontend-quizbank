@@ -210,6 +210,10 @@ const Quiz = (function () {
         return array;
     }
 
+    /**
+     * 重新整理測驗配置的 UI，包含載入題庫清單與還原上次儲存的選項。
+     * @returns {Promise<void>}
+     */
     async function refreshConfigUI() {
         const all = await QuizDB.getAll();
         const emptyHint = document.getElementById('empty-hint');
@@ -224,7 +228,8 @@ const Quiz = (function () {
         configArea.classList.remove('hidden');
 
         const banks = [...new Set(all.map(q => q.questionBank))];
-        const select = document.getElementById('config-bank-select');
+        /** @type {HTMLSelectElement} */
+        const select = /** @type {any} */ (document.getElementById('config-bank-select'));
         select.innerHTML = '';
         banks.forEach(bank => {
             const opt = document.createElement('option');
@@ -232,6 +237,58 @@ const Quiz = (function () {
             opt.textContent = bank;
             select.appendChild(opt);
         });
+
+        /** @type {HTMLSelectElement} */
+        const scopeSelect = /** @type {any} */ (document.getElementById('config-scope'));
+        /** @type {HTMLSelectElement} */
+        const modeSelect = /** @type {any} */ (document.getElementById('config-mode'));
+
+        // 讀取 localStorage
+        let savedConfig = null;
+        try {
+            const savedStr = localStorage.getItem('quiz_config');
+            if (savedStr) {
+                savedConfig = JSON.parse(savedStr);
+            }
+        } catch (e) {
+            console.error('讀取 localStorage 失敗', e);
+        }
+
+        // 預設值
+        let targetScope = scopeSelect.options[0]?.value || 'all';
+        let targetBank = select.options[0]?.value || '';
+        let targetMode = modeSelect.options[0]?.value || 'unanswered';
+
+        if (savedConfig) {
+            // 檢查 savedConfig.scope 是否有效
+            const validScopes = Array.from(scopeSelect.options).map(o => o.value);
+            if (savedConfig.scope && validScopes.includes(savedConfig.scope)) {
+                targetScope = savedConfig.scope;
+            }
+
+            // 檢查 savedConfig.bank 是否有效
+            const validBanks = Array.from(select.options).map(o => o.value);
+            if (savedConfig.bank && validBanks.includes(savedConfig.bank)) {
+                targetBank = savedConfig.bank;
+            }
+
+            // 檢查 savedConfig.mode 是否有效
+            const validModes = Array.from(modeSelect.options).map(o => o.value);
+            if (savedConfig.mode && validModes.includes(savedConfig.mode)) {
+                targetMode = savedConfig.mode;
+            }
+        }
+
+        // 套用選項
+        scopeSelect.value = targetScope;
+        select.value = targetBank;
+        modeSelect.value = targetMode;
+
+        // 觸發一次根據「全部」或「指定」題庫選項切換題庫下拉選單的呈現
+        const bankWrapper = document.getElementById('config-bank-wrapper');
+        if (bankWrapper) {
+            bankWrapper.classList.toggle('hidden', targetScope !== 'bank');
+        }
     }
 
     // 回到出題設定畫面（取代原本的 location.reload）
@@ -243,11 +300,34 @@ const Quiz = (function () {
         currentQ = null;
     }
 
+    /**
+     * 開始測驗並將當前配置儲存至 localStorage。
+     * @returns {Promise<void>}
+     */
     async function startQuiz() {
         let questions = await QuizDB.getAll();
-        const scope = document.getElementById('config-scope').value;
-        const bankName = document.getElementById('config-bank-select').value;
-        const mode = document.getElementById('config-mode').value;
+        /** @type {HTMLSelectElement} */
+        const scopeEl = /** @type {any} */ (document.getElementById('config-scope'));
+        /** @type {HTMLSelectElement} */
+        const bankSelectEl = /** @type {any} */ (document.getElementById('config-bank-select'));
+        /** @type {HTMLSelectElement} */
+        const modeEl = /** @type {any} */ (document.getElementById('config-mode'));
+
+        const scope = scopeEl.value;
+        const bankName = bankSelectEl.value;
+        const mode = modeEl.value;
+
+        // 整理並儲存當前選項
+        const quizConfig = {
+            scope: scope,
+            bank: bankName,
+            mode: mode
+        };
+        try {
+            localStorage.setItem('quiz_config', JSON.stringify(quizConfig));
+        } catch (e) {
+            console.error('儲存測驗設定失敗：', e);
+        }
 
         if (scope === 'bank' && bankName) {
             questions = questions.filter(q => q.questionBank === bankName);
