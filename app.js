@@ -310,6 +310,17 @@ const Quiz = (function () {
         if (bankWrapper) {
             bankWrapper.classList.toggle('hidden', targetScope !== 'bank');
         }
+
+        // 觸發一次根據出題模式切換起始題號輸入框的呈現與還原上次的值
+        const startNumWrapper = document.getElementById('config-start-num-wrapper');
+        if (startNumWrapper) {
+            startNumWrapper.classList.toggle('hidden', targetMode !== 'number');
+        }
+        /** @type {HTMLInputElement} */
+        const startNumInput = /** @type {any} */ (document.getElementById('config-start-num'));
+        if (startNumInput && savedConfig && savedConfig.startNum !== undefined) {
+            startNumInput.value = savedConfig.startNum;
+        }
     }
 
     // 回到出題設定畫面（取代原本的 location.reload）
@@ -343,10 +354,15 @@ const Quiz = (function () {
         const mode = modeEl.value;
 
         // 整理並儲存當前選項
+        /** @type {HTMLInputElement} */
+        const startNumEl = /** @type {any} */ (document.getElementById('config-start-num'));
+        const startNumRaw = (startNumEl ? startNumEl.value : '').trim();
+
         const quizConfig = {
             scope: scope,
             bank: bankName,
-            mode: mode
+            mode: mode,
+            startNum: startNumRaw
         };
         try {
             localStorage.setItem('quiz_config', JSON.stringify(quizConfig));
@@ -362,6 +378,21 @@ const Quiz = (function () {
             return;
         }
 
+        let startNum = null;
+        if (mode === 'number' && startNumRaw !== '') {
+            if (!/^\d+$/.test(startNumRaw) || parseInt(startNumRaw, 10) <= 0) {
+                alert('請輸入有效的數字題號！');
+                return;
+            }
+            startNum = parseInt(startNumRaw, 10);
+            const hasQuestion = questions.some(q => Number(q.questionNumber) === startNum);
+            if (!hasQuestion) {
+                const targetName = scope === 'bank' && bankName ? `題庫「${bankName}」` : '選取範圍';
+                alert(`${targetName}中沒有題號 ${startNum} 的題目！`);
+                return;
+            }
+        }
+
         if (mode === 'unanswered') {
             quizQueue = [...questions].sort((a, b) => {
                 const at = a.correct + a.fail, bt = b.correct + b.fail;
@@ -374,6 +405,16 @@ const Quiz = (function () {
                 const ad = a.fail - a.correct, bd = b.fail - b.correct;
                 if (ad !== bd) return ad - bd;
                 return Math.random() - 0.5;
+            });
+        } else if (mode === 'number') {
+            if (startNum !== null) {
+                questions = questions.filter(q => Number(q.questionNumber) >= startNum);
+            }
+            quizQueue = [...questions].sort((a, b) => {
+                if (a.questionBank !== b.questionBank) {
+                    return String(b.questionBank || '').localeCompare(String(a.questionBank || ''));
+                }
+                return Number(b.questionNumber || 0) - Number(a.questionNumber || 0);
             });
         } else {
             quizQueue = shuffle([...questions]);
@@ -698,6 +739,12 @@ const Quiz = (function () {
 
         document.getElementById('config-scope').addEventListener('change', e => {
             document.getElementById('config-bank-wrapper').classList.toggle('hidden', e.target.value !== 'bank');
+        });
+        document.getElementById('config-mode').addEventListener('change', e => {
+            const startNumWrapper = document.getElementById('config-start-num-wrapper');
+            if (startNumWrapper) {
+                startNumWrapper.classList.toggle('hidden', e.target.value !== 'number');
+            }
         });
         document.getElementById('start-btn').addEventListener('click', startQuiz);
         document.getElementById('confirm-btn').addEventListener('click', handleConfirm);
