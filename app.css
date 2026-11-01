@@ -314,6 +314,34 @@ main.quiz-active { padding-bottom: 100px; }
 .feedback-title.error { color: var(--error); }
 #feedback-desc { color: var(--text-light); line-height: 1.5; }
 
+/* 獨立備註區塊 (feedback-box 以外) */
+.remark-box {
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 8px;
+    background: #252525;
+    border: 1px solid var(--border);
+    border-left: 4px solid #ffb74d;
+    display: none;
+}
+.remark-box.show { display: block; animation: fadeIn 0.3s; }
+.remark-header {
+    font-size: 0.95rem;
+    font-weight: bold;
+    color: #ffb74d;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+#remark-text {
+    color: var(--text);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 .bottom-bar {
     position: fixed;
     bottom: 0;
@@ -326,9 +354,35 @@ main.quiz-active { padding-bottom: 100px; }
     padding-bottom: calc(15px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
     display: none;
+    gap: 12px;
+    align-items: center;
+    z-index: 80;
 }
-.bottom-bar.show { display: block; }
-.bottom-bar .action-btn { margin-top: 0; }
+.bottom-bar.show { display: flex; }
+.bottom-bar .action-btn { margin-top: 0; flex: 1; }
+
+/* 測驗底部方形筆按鈕 */
+.remark-btn {
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #2c2c2c;
+    font-size: 1.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.2s;
+    color: var(--text);
+    padding: 0;
+}
+.remark-btn:hover {
+    background: #383838;
+    border-color: var(--primary);
+    transform: scale(1.04);
+}
 
 /* =========================================
    題庫管理（原 part2）
@@ -433,8 +487,9 @@ main.quiz-active { padding-bottom: 100px; }
 .option-edit-item input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; }
 .option-edit-item .opt-remove { background: none; border: none; color: var(--error); font-size: 1.1rem; cursor: pointer; }
 
-#edit-question-text, #edit-description,
-#add-question-text, #add-description {
+#edit-question-text, #edit-description, #edit-remark,
+#add-question-text, #add-description, #add-remark,
+#remark-modal-text {
     width: 100%;
     background: #2c2c2c;
     border: 1px solid var(--border);

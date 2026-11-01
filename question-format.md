@@ -48,7 +48,8 @@
     { "order": 0, "text": "選項文字一" },
     { "order": 0, "text": "選項文字二", "true": true }
   ],
-  "description": "詳細解答與觀念說明"
+  "description": "詳細解答與觀念說明",
+  "remark": "個人心得、易錯重點或補充筆記（可選）"
 }
 ```
 
@@ -61,7 +62,8 @@
     ["ref", "ref()"],
     ["reactive", "reactive()"]
   ],
-  "description": "詳細解答與觀念說明"
+  "description": "詳細解答與觀念說明",
+  "remark": "個人心得、易錯重點或補充筆記（可選）"
 }
 ```
 

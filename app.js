@@ -108,7 +108,7 @@ function renderMath(element) {
         },
 
         // 單題新增（自動填預設欄位）
-        async add({ questionBank, question, options = [], description = '', questionNumber = null, type = 'single', answers = [] }) {
+        async add({ questionBank, question, options = [], description = '', remark = '', questionNumber = null, type = 'single', answers = [] }) {
             const num = questionNumber ?? await this.nextQuestionNumber(questionBank);
             return p(store('readwrite').add({
                 questionBank,
@@ -120,6 +120,7 @@ function renderMath(element) {
                 options: options || [],
                 answers: answers || [],
                 description,
+                remark: remark || '',
             }));
         },
 
@@ -143,6 +144,7 @@ function renderMath(element) {
                         options: it.options || [],
                         answers: it.answers || [],
                         description: it.description || '',
+                        remark: it.remark || '',
                     });
                 });
                 t.oncomplete = () => resolve(items.length);
@@ -213,6 +215,11 @@ const Quiz = (function () {
     let selectedOptionsSet = new Set(); // 用於 multi
     let fillInputValues = []; // 用於 fill
     let isAnswerSubmitted = false;
+
+    let remarkBtn = null;
+    let remarkModal = null;
+    let remarkModalText = null;
+    let remarkModalQuestion = null;
 
     function shuffle(array) {
         let i = array.length, r;
@@ -310,6 +317,10 @@ const Quiz = (function () {
         document.getElementById('view-quiz').classList.add('hidden');
         document.getElementById('view-config').classList.remove('hidden');
         document.getElementById('bottom-bar').classList.remove('show');
+        if (remarkBtn) remarkBtn.classList.add('hidden');
+        const remarkBox = document.getElementById('remark-box');
+        if (remarkBox) remarkBox.classList.remove('show');
+        closeRemarkModal();
         quizQueue = [];
         currentQ = null;
     }
@@ -387,6 +398,12 @@ const Quiz = (function () {
         selectedOptionData = null;
         selectedOptionsSet.clear();
         fillInputValues = [];
+
+        if (remarkBtn) remarkBtn.classList.add('hidden');
+        const remarkBox = document.getElementById('remark-box');
+        const remarkText = document.getElementById('remark-text');
+        if (remarkBox) remarkBox.classList.remove('show');
+        if (remarkText) remarkText.textContent = '';
 
         document.getElementById('quiz-bank-name').textContent = `題庫：${currentQ.questionBank}`;
         document.getElementById('quiz-progress').textContent = `題號：${currentQ.questionNumber}`;
@@ -607,8 +624,22 @@ const Quiz = (function () {
             const fdEl = document.getElementById('feedback-desc');
             fdEl.textContent = currentQ.description || '無詳解';
             renderMath(fdEl);
-            
+
             document.getElementById('feedback-box').classList.add('show');
+
+            // 備註呈現：若有內容則在 feedback-box 外部獨立呈現 remark-box
+            const remarkBox = document.getElementById('remark-box');
+            const remarkText = document.getElementById('remark-text');
+            if (currentQ.remark && currentQ.remark.trim()) {
+                remarkText.textContent = currentQ.remark.trim();
+                renderMath(remarkText);
+                remarkBox.classList.add('show');
+            } else {
+                remarkBox.classList.remove('show');
+            }
+
+            // 顯示下一題左側的方形筆 Emoji 按鈕
+            if (remarkBtn) remarkBtn.classList.remove('hidden');
 
             cb.textContent = '下一題';
             cb.classList.add('next-mode');
@@ -618,12 +649,64 @@ const Quiz = (function () {
         }
     }
 
+    function openRemarkModal() {
+        if (!currentQ) return;
+        if (remarkModalQuestion) remarkModalQuestion.textContent = currentQ.question;
+        if (remarkModalText) remarkModalText.value = currentQ.remark || '';
+        if (remarkModal) remarkModal.classList.add('show');
+        const overlay = document.getElementById('overlay');
+        if (overlay) overlay.classList.add('show');
+    }
+
+    function closeRemarkModal() {
+        if (remarkModal) remarkModal.classList.remove('show');
+        const editModal = document.getElementById('edit-modal');
+        const addModal = document.getElementById('add-modal');
+        const isOtherModalOpen = (editModal && editModal.classList.contains('show')) ||
+            (addModal && addModal.classList.contains('show'));
+        if (!isOtherModalOpen) {
+            const overlay = document.getElementById('overlay');
+            if (overlay) overlay.classList.remove('show');
+        }
+    }
+
+    async function saveRemark() {
+        if (!currentQ) return;
+        const newRemark = (remarkModalText ? remarkModalText.value : '').trim();
+        currentQ.remark = newRemark;
+        await QuizDB.update(currentQ.id, { remark: newRemark });
+
+        // 即時刷新 feedback-box 外部的獨立備註區塊
+        const remarkBox = document.getElementById('remark-box');
+        const remarkText = document.getElementById('remark-text');
+        if (newRemark) {
+            remarkText.textContent = newRemark;
+            renderMath(remarkText);
+            remarkBox.classList.add('show');
+        } else {
+            remarkBox.classList.remove('show');
+        }
+
+        closeRemarkModal();
+    }
+
     function init() {
+        remarkBtn = document.getElementById('remark-edit-btn');
+        remarkModal = document.getElementById('remark-modal');
+        remarkModalText = document.getElementById('remark-modal-text');
+        remarkModalQuestion = document.getElementById('remark-modal-question');
+
         document.getElementById('config-scope').addEventListener('change', e => {
             document.getElementById('config-bank-wrapper').classList.toggle('hidden', e.target.value !== 'bank');
         });
         document.getElementById('start-btn').addEventListener('click', startQuiz);
         document.getElementById('confirm-btn').addEventListener('click', handleConfirm);
+
+        if (remarkBtn) remarkBtn.addEventListener('click', openRemarkModal);
+        const remarkCancelBtn = document.getElementById('remark-modal-cancel');
+        if (remarkCancelBtn) remarkCancelBtn.addEventListener('click', closeRemarkModal);
+        const remarkSaveBtn = document.getElementById('remark-modal-save');
+        if (remarkSaveBtn) remarkSaveBtn.addEventListener('click', saveRemark);
     }
 
     // 每次進入測驗頁：回到設定畫面並重新整理題庫清單
@@ -738,7 +821,8 @@ const Bank = (function () {
             answerText = `選項：\n${opts}`;
         }
         const typeText = qType === 'single' ? '單選' : (qType === 'multi' ? '複選' : '填充');
-        const text = `題庫：${q.questionBank}\n題型：${typeText}\n第 ${q.questionNumber} 題\n題目：${q.question}\n${answerText}\n說明：${q.description || '無'}`;
+        const remarkPart = q.remark ? `\n備註：${q.remark}` : '';
+        const text = `題庫：${q.questionBank}\n題型：${typeText}\n第 ${q.questionNumber} 題\n題目：${q.question}\n${answerText}\n說明：${q.description || '無'}${remarkPart}`;
         navigator.clipboard.writeText(text).then(() => alert('題目已複製到剪貼簿！'));
     }
 
@@ -788,6 +872,7 @@ const Bank = (function () {
         editTypeSelect.value = qType;
         document.getElementById('edit-question-text').value = q.question;
         document.getElementById('edit-description').value = q.description || '';
+        document.getElementById('edit-remark').value = q.remark || '';
         
         editOptionsList.innerHTML = '';
         (q.options || []).forEach(opt => {
@@ -844,6 +929,7 @@ const Bank = (function () {
         if (!question) return alert('題目不能為空');
         const type = editTypeSelect.value;
         const description = document.getElementById('edit-description').value.trim();
+        const remark = document.getElementById('edit-remark').value.trim();
 
         let options = [];
         let answers = [];
@@ -881,6 +967,7 @@ const Bank = (function () {
             options,
             answers,
             description,
+            remark,
         });
         alert('修改成功！');
         closeEditModal();
@@ -910,6 +997,7 @@ const Bank = (function () {
         addTypeSelect.value = 'single';
         document.getElementById('add-question-text').value = '';
         document.getElementById('add-description').value = '';
+        document.getElementById('add-remark').value = '';
 
         addOptionsList.innerHTML = '';
         [0, 1, 2, 3].forEach(() => buildOptionRow(addOptionsList));
@@ -940,6 +1028,7 @@ const Bank = (function () {
 
         const type = addTypeSelect.value;
         const description = document.getElementById('add-description').value.trim();
+        const remark = document.getElementById('add-remark').value.trim();
         let options = [];
         let answers = [];
 
@@ -976,6 +1065,7 @@ const Bank = (function () {
             options,
             answers,
             description,
+            remark,
         });
 
         if (document.getElementById('add-keep-open').checked) {
@@ -1042,6 +1132,11 @@ const Bank = (function () {
         overlay.addEventListener('click', () => {
             if (editModal.classList.contains('show')) closeEditModal();
             if (addModal.classList.contains('show')) closeAddModal();
+            const remarkModal = document.getElementById('remark-modal');
+            if (remarkModal && remarkModal.classList.contains('show')) {
+                remarkModal.classList.remove('show');
+                overlay.classList.remove('show');
+            }
         });
     }
 

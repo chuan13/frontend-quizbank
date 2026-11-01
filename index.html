@@ -96,6 +96,10 @@
                         <div id="feedback-title" class="feedback-title"></div>
                         <div id="feedback-desc"></div>
                     </div>
+                    <div id="remark-box" class="remark-box">
+                        <div class="remark-header">📝 備註</div>
+                        <div id="remark-text"></div>
+                    </div>
                 </div>
             </section>
 
@@ -179,6 +183,7 @@
 
         <!-- 測驗底部送出列（固定） -->
         <div class="bottom-bar" id="bottom-bar">
+            <button id="remark-edit-btn" class="remark-btn hidden" title="編輯備註" aria-label="編輯備註">📝</button>
             <button id="confirm-btn" class="action-btn" disabled>請先選擇選項</button>
         </div>
 
@@ -214,6 +219,10 @@
                 <div class="config-group">
                     <label>說明文字 (詳解)</label>
                     <textarea id="edit-description" rows="2"></textarea>
+                </div>
+                <div class="config-group">
+                    <label>備註文字 (Remark，可選)</label>
+                    <textarea id="edit-remark" rows="2" placeholder="個人心得、易錯點或提醒，可留空"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
@@ -261,6 +270,10 @@
                     <textarea id="add-description" rows="2" placeholder="可留空"></textarea>
                 </div>
                 <div class="config-group">
+                    <label>備註文字 (Remark，可選)</label>
+                    <textarea id="add-remark" rows="2" placeholder="個人心得、易錯點或提醒，可留空"></textarea>
+                </div>
+                <div class="config-group">
                     <label>
                         <input type="checkbox" id="add-keep-open" style="vertical-align: middle;">
                         儲存後繼續新增下一題
@@ -270,6 +283,25 @@
             <div class="modal-footer">
                 <button class="modal-btn secondary" id="add-cancel">取消</button>
                 <button class="modal-btn primary" id="add-save">儲存題目</button>
+            </div>
+        </div>
+
+        <!-- 測驗：編輯題目備註 Modal -->
+        <div class="modal" id="remark-modal">
+            <div class="modal-header">編輯題目備註</div>
+            <div class="modal-body">
+                <div class="config-group">
+                    <label>題目</label>
+                    <div id="remark-modal-question" class="hint-text" style="text-align: left; padding: 4px 0; color: var(--text-light); line-height: 1.4;"></div>
+                </div>
+                <div class="config-group">
+                    <label>備註內容 (可留空以清除)</label>
+                    <textarea id="remark-modal-text" rows="4" placeholder="在此輸入個人心得、易錯點或提醒筆記..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary" id="remark-modal-cancel">取消</button>
+                <button class="modal-btn primary" id="remark-modal-save">儲存備註</button>
             </div>
         </div>
     </div>
