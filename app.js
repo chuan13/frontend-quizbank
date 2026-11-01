@@ -108,14 +108,18 @@ function renderMath(element) {
         },
 
         // 單題新增（自動填預設欄位）
-        async add({ questionBank, question, options = [], description = '', remark = '', questionNumber = null, type = 'single', answers = [] }) {
+        async add({ questionBank, question, options = [], description = '', remark = '', questionNumber = null, type = 'single', answers = [], correct = 0, fail = 0 }) {
             const num = questionNumber ?? await this.nextQuestionNumber(questionBank);
+            const parseStat = (v) => {
+                const n = Number(v);
+                return Number.isInteger(n) && n >= 0 ? n : 0;
+            };
             return p(store('readwrite').add({
                 questionBank,
                 questionNumber: num,
                 type: type || 'single',
-                correct: 0,
-                fail: 0,
+                correct: parseStat(correct),
+                fail: parseStat(fail),
                 question,
                 options: options || [],
                 answers: answers || [],
@@ -128,6 +132,10 @@ function renderMath(element) {
         async addBatch(items, bank) {
             const all = await this.getAll();
             let maxNum = all.filter(q => q.questionBank === bank).length;
+            const parseStat = (v) => {
+                const n = Number(v);
+                return Number.isInteger(n) && n >= 0 ? n : 0;
+            };
             return new Promise((resolve, reject) => {
                 const t = db.transaction(['questions'], 'readwrite');
                 const s = t.objectStore('questions');
@@ -138,8 +146,8 @@ function renderMath(element) {
                         questionBank: bank,
                         questionNumber: maxNum,
                         type: inferredType,
-                        correct: 0,
-                        fail: 0,
+                        correct: parseStat(it.correct),
+                        fail: parseStat(it.fail),
                         question: it.question,
                         options: it.options || [],
                         answers: it.answers || [],
