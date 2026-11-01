@@ -13,8 +13,17 @@
    ========================================================================= */
 
 /* =========================================================================
-   KaTeX 渲染輔助函式
+   全域輔助函式 (KaTeX 渲染與 HTML 跳脫)
    ========================================================================= */
+
+/**
+ * 轉義 HTML 特殊字元以防 XSS。
+ * @param {string} s 
+ * @returns {string}
+ */
+function escapeHtml(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 /**
  * 渲染指定 HTML 元素中的 LaTeX 數學公式。
@@ -99,16 +108,17 @@ function renderMath(element) {
         },
 
         // 單題新增（自動填預設欄位）
-        async add({ questionBank, question, options, description = '', questionNumber = null }) {
+        async add({ questionBank, question, options = [], description = '', questionNumber = null, type = 'single', answers = [] }) {
             const num = questionNumber ?? await this.nextQuestionNumber(questionBank);
             return p(store('readwrite').add({
                 questionBank,
                 questionNumber: num,
-                type: 'single',
+                type: type || 'single',
                 correct: 0,
                 fail: 0,
                 question,
-                options,
+                options: options || [],
+                answers: answers || [],
                 description,
             }));
         },
@@ -122,15 +132,17 @@ function renderMath(element) {
                 const s = t.objectStore('questions');
                 items.forEach(it => {
                     maxNum++;
+                    const inferredType = it.type || (Array.isArray(it.answers) && it.answers.length > 0 ? 'fill' : 'single');
                     s.add({
                         questionBank: bank,
                         questionNumber: maxNum,
-                        type: 'single',
+                        type: inferredType,
                         correct: 0,
                         fail: 0,
                         question: it.question,
-                        options: it.options,
-                        description: it.description,
+                        options: it.options || [],
+                        answers: it.answers || [],
+                        description: it.description || '',
                     });
                 });
                 t.oncomplete = () => resolve(items.length);
@@ -197,7 +209,9 @@ const Home = (function () {
 const Quiz = (function () {
     let quizQueue = [];
     let currentQ = null;
-    let selectedOptionData = null;
+    let selectedOptionData = null; // 用於 single
+    let selectedOptionsSet = new Set(); // 用於 multi
+    let fillInputValues = []; // 用於 fill
     let isAnswerSubmitted = false;
 
     function shuffle(array) {
@@ -371,40 +385,73 @@ const Quiz = (function () {
         currentQ = quizQueue.pop();
         isAnswerSubmitted = false;
         selectedOptionData = null;
+        selectedOptionsSet.clear();
+        fillInputValues = [];
 
         document.getElementById('quiz-bank-name').textContent = `題庫：${currentQ.questionBank}`;
         document.getElementById('quiz-progress').textContent = `題號：${currentQ.questionNumber}`;
         document.getElementById('quiz-stats-count').textContent = `次數：${currentQ.correct + currentQ.fail}`;
         
+        const qType = currentQ.type || (Array.isArray(currentQ.answers) && currentQ.answers.length > 0 ? 'fill' : 'single');
+        const typeBadge = document.getElementById('quiz-type-badge');
+        if (typeBadge) {
+            typeBadge.className = `type-badge ${qType}`;
+            typeBadge.textContent = qType === 'single' ? '單選' : (qType === 'multi' ? '複選' : '填充');
+        }
+
         const qEl = document.getElementById('question-text');
-        qEl.textContent = currentQ.question;
+        if (qType === 'fill' || /\{\{\d+\}\}/.test(currentQ.question)) {
+            const escaped = escapeHtml(currentQ.question);
+            qEl.innerHTML = escaped.replace(/\{\{(\d+)\}\}/g, '<span class="blank-slot-badge">($1)</span>');
+        } else {
+            qEl.textContent = currentQ.question;
+        }
         renderMath(qEl);
         
         document.getElementById('feedback-box').classList.remove('show');
 
         const btn = document.getElementById('confirm-btn');
-        btn.textContent = '請先選擇選項';
         btn.disabled = true;
         btn.classList.remove('next-mode');
-
-        let opts = [...currentQ.options];
-        if (opts.every(o => o.order === 0)) opts = shuffle(opts);
-        else opts.sort((a, b) => a.order - b.order);
+        if (qType === 'single') {
+            btn.textContent = '請先選擇選項';
+        } else if (qType === 'multi') {
+            btn.textContent = '請選擇選項 (複選)';
+        } else {
+            btn.textContent = '請輸入所有空格';
+        }
 
         const container = document.getElementById('options-container');
         container.innerHTML = '';
+
+        if (qType === 'fill') {
+            renderFillInputs(container);
+        } else {
+            renderChoiceOptions(container, qType);
+        }
+    }
+
+    function renderChoiceOptions(container, qType) {
+        let opts = [...(currentQ.options || [])];
+        if (opts.every(o => o.order === 0)) opts = shuffle(opts);
+        else opts.sort((a, b) => a.order - b.order);
+
         opts.forEach(option => {
             const optBtn = document.createElement('button');
-            optBtn.className = 'option-btn';
+            optBtn.className = qType === 'multi' ? 'option-btn multi-choice' : 'option-btn';
             optBtn.textContent = option.text;
-            /** @type {any} */ (optBtn)._optionData = option; // 為了在 JS 中暫存選項資料
-            optBtn.onclick = () => selectOption(optBtn, option);
+            /** @type {any} */ (optBtn)._optionData = option;
+            if (qType === 'multi') {
+                optBtn.onclick = () => toggleMultiOption(optBtn, option);
+            } else {
+                optBtn.onclick = () => selectSingleOption(optBtn, option);
+            }
             container.appendChild(optBtn);
             renderMath(optBtn);
         });
     }
 
-    function selectOption(btnEl, data) {
+    function selectSingleOption(btnEl, data) {
         if (isAnswerSubmitted) return;
         document.querySelectorAll('.option-btn').forEach(el => el.classList.remove('selected'));
         btnEl.classList.add('selected');
@@ -414,22 +461,139 @@ const Quiz = (function () {
         cb.disabled = false;
     }
 
+    function toggleMultiOption(btnEl, data) {
+        if (isAnswerSubmitted) return;
+        if (selectedOptionsSet.has(data)) {
+            selectedOptionsSet.delete(data);
+            btnEl.classList.remove('selected');
+        } else {
+            selectedOptionsSet.add(data);
+            btnEl.classList.add('selected');
+        }
+        const cb = document.getElementById('confirm-btn');
+        if (selectedOptionsSet.size > 0) {
+            cb.textContent = `確認送出 (已選 ${selectedOptionsSet.size} 項)`;
+            cb.disabled = false;
+        } else {
+            cb.textContent = '請選擇選項 (複選)';
+            cb.disabled = true;
+        }
+    }
+
+    function renderFillInputs(container) {
+        let slotCount = (currentQ.answers && currentQ.answers.length) || 0;
+        if (slotCount === 0) {
+            const matches = [...currentQ.question.matchAll(/\{\{(\d+)\}\}/g)];
+            if (matches.length > 0) {
+                slotCount = Math.max(...matches.map(m => parseInt(m[1], 10)));
+            } else {
+                slotCount = 1;
+            }
+        }
+
+        fillInputValues = new Array(slotCount).fill('');
+        const fillList = document.createElement('div');
+        fillList.className = 'fill-list';
+
+        for (let i = 0; i < slotCount; i++) {
+            const item = document.createElement('div');
+            item.className = 'fill-item';
+            item.innerHTML = `
+                <div class="fill-header">
+                    <span class="fill-label">第 ${i + 1} 格</span>
+                </div>
+                <input type="text" class="fill-input" data-index="${i}" placeholder="請在此輸入第 ${i + 1} 格答案...">
+            `;
+            const input = item.querySelector('.fill-input');
+            input.addEventListener('input', (e) => {
+                fillInputValues[i] = e.target.value;
+                updateFillConfirmBtn(slotCount);
+            });
+            fillList.appendChild(item);
+        }
+        container.appendChild(fillList);
+    }
+
+    function updateFillConfirmBtn(slotCount) {
+        const cb = document.getElementById('confirm-btn');
+        const allFilled = fillInputValues.length === slotCount && fillInputValues.every(val => (val || '').trim().length > 0);
+        if (allFilled) {
+            cb.textContent = '確認送出';
+            cb.disabled = false;
+        } else {
+            cb.textContent = '請輸入所有空格';
+            cb.disabled = true;
+        }
+    }
+
     async function handleConfirm() {
         const cb = document.getElementById('confirm-btn');
         if (!isAnswerSubmitted) {
             isAnswerSubmitted = true;
-            const isCorrect = selectedOptionData.true === true;
-            await QuizDB.updateStats(currentQ.id, isCorrect);
+            const qType = currentQ.type || (Array.isArray(currentQ.answers) && currentQ.answers.length > 0 ? 'fill' : 'single');
+            let isCorrect = false;
 
-            document.querySelectorAll('.option-btn').forEach(btn => {
-                btn.disabled = true;
-                const od = /** @type {any} */ (btn)._optionData;
-                if (od && od.true === true) btn.classList.add('correct');
-            });
-            if (!isCorrect) {
-                const sel = document.querySelector('.option-btn.selected');
-                if (sel) sel.classList.add('wrong');
+            if (qType === 'single') {
+                isCorrect = selectedOptionData && selectedOptionData.true === true;
+                document.querySelectorAll('.option-btn').forEach(btn => {
+                    btn.disabled = true;
+                    const od = /** @type {any} */ (btn)._optionData;
+                    if (od && od.true === true) btn.classList.add('correct');
+                });
+                if (!isCorrect) {
+                    const sel = document.querySelector('.option-btn.selected');
+                    if (sel) sel.classList.add('wrong');
+                }
+            } else if (qType === 'multi') {
+                const correctOptions = (currentQ.options || []).filter(o => o.true === true);
+                isCorrect = (selectedOptionsSet.size === correctOptions.length) &&
+                    correctOptions.every(o => selectedOptionsSet.has(o));
+
+                document.querySelectorAll('.option-btn').forEach(btn => {
+                    btn.disabled = true;
+                    const od = /** @type {any} */ (btn)._optionData;
+                    const isSelected = selectedOptionsSet.has(od);
+                    const isAnswer = od && od.true === true;
+
+                    if (isAnswer && isSelected) {
+                        btn.classList.add('correct');
+                    } else if (isAnswer && !isSelected) {
+                        btn.classList.add('correct-missed');
+                        btn.title = '此為正確答案（漏選）';
+                    } else if (!isAnswer && isSelected) {
+                        btn.classList.add('wrong');
+                    }
+                });
+            } else if (qType === 'fill') {
+                const slotCount = (currentQ.answers && currentQ.answers.length) || fillInputValues.length;
+                let allSlotsCorrect = true;
+
+                for (let i = 0; i < slotCount; i++) {
+                    const userVal = (fillInputValues[i] || '').trim();
+                    const validAnswers = (currentQ.answers && currentQ.answers[i]) || [];
+                    // 比對規則：不忽略英文字母大小寫，去前後空白
+                    const isSlotCorrect = validAnswers.some(ans => String(ans).trim() === userVal);
+                    if (!isSlotCorrect) allSlotsCorrect = false;
+
+                    const container = document.getElementById('options-container');
+                    const inputEl = container.querySelector(`.fill-input[data-index="${i}"]`);
+                    if (inputEl) {
+                        inputEl.disabled = true;
+                        if (isSlotCorrect) {
+                            inputEl.classList.add('correct');
+                        } else {
+                            inputEl.classList.add('wrong');
+                            const hint = document.createElement('div');
+                            hint.className = 'fill-answer-hint';
+                            hint.textContent = `正確解答：${validAnswers.join(' 或 ')}`;
+                            inputEl.parentElement.appendChild(hint);
+                        }
+                    }
+                }
+                isCorrect = allSlotsCorrect;
             }
+
+            await QuizDB.updateStats(currentQ.id, isCorrect);
 
             const ft = document.getElementById('feedback-title');
             if (isCorrect) {
@@ -448,6 +612,7 @@ const Quiz = (function () {
 
             cb.textContent = '下一題';
             cb.classList.add('next-mode');
+            cb.disabled = false;
         } else {
             loadNextQuestion();
         }
@@ -477,7 +642,9 @@ const Bank = (function () {
     let allRecords = [];
     let editingId = null;
 
-    let overlay, editModal, addModal, addBankSelect, addNewBankInput, addOptionsList;
+    let overlay, editModal, addModal, addBankSelect, addNewBankInput;
+    let editTypeSelect, editOptionsArea, editBlanksArea, editOptionsList, editBlanksList;
+    let addTypeSelect, addOptionsArea, addBlanksArea, addOptionsList, addBlanksList;
 
     /* ---------- 列表渲染 ---------- */
 
@@ -532,11 +699,16 @@ const Bank = (function () {
             const div = document.createElement('div');
             div.className = 'record-item';
             const preview = q.question.length > 20 ? q.question.slice(0, 20) + '...' : q.question;
+            const qType = q.type || (Array.isArray(q.answers) && q.answers.length > 0 ? 'fill' : 'single');
+            const typeText = qType === 'single' ? '單選' : (qType === 'multi' ? '複選' : '填充');
             div.innerHTML = `
                 <div class="record-info">
-                    <span class="bank-tag">${q.questionBank}</span>
-                    <span>第 ${q.questionNumber} 題</span>
-                    <span class="preview">${preview}</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span class="bank-tag">${q.questionBank}</span>
+                        <span class="type-badge ${qType}">${typeText}</span>
+                        <span style="font-size:0.85rem; color:var(--text-light);">第 ${q.questionNumber} 題</span>
+                    </div>
+                    <span class="preview">${escapeHtml(preview)}</span>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <div class="record-stats">
@@ -556,28 +728,87 @@ const Bank = (function () {
     }
 
     function copyQ(q) {
-        const opts = q.options.map((o, i) => `${String.fromCharCode(65 + i)}. ${o.text}${o.true ? ' (正確答案)' : ''}`).join('\n');
-        const text = `題庫：${q.questionBank}\n第 ${q.questionNumber} 題\n題目：${q.question}\n選項：\n${opts}\n說明：${q.description || '無'}`;
+        const qType = q.type || (Array.isArray(q.answers) && q.answers.length > 0 ? 'fill' : 'single');
+        let answerText = '';
+        if (qType === 'fill') {
+            const ansList = q.answers || [];
+            answerText = ansList.map((a, i) => `第 ${i + 1} 格答案：${Array.isArray(a) ? a.join(' / ') : a}`).join('\n');
+        } else {
+            const opts = (q.options || []).map((o, i) => `${String.fromCharCode(65 + i)}. ${o.text}${o.true ? ' (正確答案)' : ''}`).join('\n');
+            answerText = `選項：\n${opts}`;
+        }
+        const typeText = qType === 'single' ? '單選' : (qType === 'multi' ? '複選' : '填充');
+        const text = `題庫：${q.questionBank}\n題型：${typeText}\n第 ${q.questionNumber} 題\n題目：${q.question}\n${answerText}\n說明：${q.description || '無'}`;
         navigator.clipboard.writeText(text).then(() => alert('題目已複製到剪貼簿！'));
+    }
+
+    /* ---------- 空格與選項輔助 ---------- */
+
+    function buildBlankRow(container, value = '') {
+        const idx = container.children.length + 1;
+        const item = document.createElement('div');
+        item.className = 'option-edit-item blank-edit-item';
+        item.innerHTML = `
+            <span style="font-size:0.85rem; color:var(--primary); font-weight:bold; width:55px; flex-shrink:0;">第 ${idx} 格</span>
+            <input type="text" class="blank-edit-text" placeholder="多個可接受答案以逗號 , 分隔" value="${escapeAttr(value)}">
+            <button type="button" class="opt-remove" title="刪除空格">✕</button>
+        `;
+        item.querySelector('.opt-remove').onclick = () => {
+            if (container.children.length <= 1) return alert('至少需保留一個空格');
+            item.remove();
+            Array.from(container.children).forEach((child, i) => {
+                const sp = child.querySelector('span');
+                if (sp) sp.textContent = `第 ${i + 1} 格`;
+            });
+        };
+        container.appendChild(item);
+    }
+
+    function buildOptionRow(container, { text = '', isTrue = false, order = 0 } = {}, isEdit = false) {
+        const item = document.createElement('div');
+        item.className = 'option-edit-item';
+        item.innerHTML = `
+            <input type="checkbox" class="opt-correct" ${isTrue ? 'checked' : ''} title="正確答案">
+            <input type="text" class="opt-text" placeholder="選項內容" value="${escapeAttr(text)}">
+            <input type="number" class="opt-order" value="${order}" min="0" title="order (0=隨機, 1+=固定順序)">
+            <button type="button" class="opt-remove" title="刪除選項">✕</button>
+        `;
+        item.querySelector('.opt-remove').onclick = () => {
+            if (container.children.length <= 2) return alert('至少需保留兩個選項');
+            item.remove();
+        };
+        container.appendChild(item);
     }
 
     /* ---------- 編輯 Modal ---------- */
 
     function openEditModal(q) {
         editingId = q.id;
+        const qType = q.type || (Array.isArray(q.answers) && q.answers.length > 0 ? 'fill' : 'single');
+        editTypeSelect.value = qType;
         document.getElementById('edit-question-text').value = q.question;
         document.getElementById('edit-description').value = q.description || '';
-        const list = document.getElementById('edit-options-list');
-        list.innerHTML = '';
-        q.options.forEach(opt => {
-            const item = document.createElement('div');
-            item.className = 'option-edit-item';
-            item.innerHTML = `
-                <input type="checkbox" class="edit-opt-correct" ${opt.true ? 'checked' : ''}>
-                <input type="text" class="edit-opt-text" value="${escapeAttr(opt.text)}">
-            `;
-            list.appendChild(item);
+        
+        editOptionsList.innerHTML = '';
+        (q.options || []).forEach(opt => {
+            buildOptionRow(editOptionsList, { text: opt.text, isTrue: !!opt.true, order: opt.order || 0 }, true);
         });
+        if (editOptionsList.children.length === 0) {
+            [0, 1, 2, 3].forEach(() => buildOptionRow(editOptionsList, {}, true));
+        }
+
+        editBlanksList.innerHTML = '';
+        if (Array.isArray(q.answers) && q.answers.length > 0) {
+            q.answers.forEach(ansGroup => {
+                const valStr = Array.isArray(ansGroup) ? ansGroup.join(', ') : String(ansGroup);
+                buildBlankRow(editBlanksList, valStr);
+            });
+        } else {
+            buildBlankRow(editBlanksList);
+        }
+
+        updateModalTypeUI('edit', qType);
+
         editModal.classList.add('show');
         overlay.classList.add('show');
     }
@@ -587,30 +818,69 @@ const Bank = (function () {
         if (!addModal.classList.contains('show')) overlay.classList.remove('show');
     }
 
+    function updateModalTypeUI(mode, type) {
+        const isEdit = mode === 'edit';
+        const optArea = isEdit ? editOptionsArea : addOptionsArea;
+        const blankArea = isEdit ? editBlanksArea : addBlanksArea;
+        const optLabel = document.getElementById(isEdit ? 'edit-options-label' : 'add-options-label');
+
+        if (type === 'fill') {
+            optArea.classList.add('hidden');
+            blankArea.classList.remove('hidden');
+        } else {
+            optArea.classList.remove('hidden');
+            blankArea.classList.add('hidden');
+            if (optLabel) {
+                optLabel.textContent = type === 'multi'
+                    ? '選項 (可勾選多個正確答案)'
+                    : '選項 (勾選一個正確答案；order 0=隨機，1+=固定順序)';
+            }
+        }
+    }
+
     async function saveEdit() {
         if (editingId === null) return;
         const question = document.getElementById('edit-question-text').value.trim();
         if (!question) return alert('題目不能為空');
+        const type = editTypeSelect.value;
+        const description = document.getElementById('edit-description').value.trim();
 
-        const items = document.querySelectorAll('#edit-options-list .option-edit-item');
-        const options = [];
-        let hasCorrect = false;
-        items.forEach((it, idx) => {
-            const text = it.querySelector('.edit-opt-text').value.trim();
-            const isTrue = it.querySelector('.edit-opt-correct').checked;
-            if (text) {
-                const o = { order: idx + 1, text };
-                if (isTrue) { o.true = true; hasCorrect = true; }
-                options.push(o);
-            }
-        });
-        if (options.length < 2) return alert('至少需要兩個選項');
-        if (!hasCorrect) return alert('請至少勾選一個正確答案');
+        let options = [];
+        let answers = [];
+
+        if (type === 'fill') {
+            const blankItems = editBlanksList.querySelectorAll('.blank-edit-item');
+            blankItems.forEach(it => {
+                const raw = it.querySelector('.blank-edit-text').value.trim();
+                if (raw) {
+                    const ansList = raw.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+                    if (ansList.length > 0) answers.push(ansList);
+                }
+            });
+            if (answers.length === 0) return alert('填充題至少需要設定一個空格答案');
+        } else {
+            const items = editOptionsList.querySelectorAll('.option-edit-item');
+            let hasCorrect = false;
+            items.forEach((it, idx) => {
+                const text = it.querySelector('.opt-text').value.trim();
+                const isTrue = it.querySelector('.opt-correct').checked;
+                const order = parseInt(it.querySelector('.opt-order').value, 10) || 0;
+                if (text) {
+                    const o = { order: order || (idx + 1), text };
+                    if (isTrue) { o.true = true; hasCorrect = true; }
+                    options.push(o);
+                }
+            });
+            if (options.length < 2) return alert('至少需要兩個選項');
+            if (!hasCorrect) return alert('請至少勾選一個正確答案');
+        }
 
         await QuizDB.update(editingId, {
             question,
+            type,
             options,
-            description: document.getElementById('edit-description').value.trim(),
+            answers,
+            description,
         });
         alert('修改成功！');
         closeEditModal();
@@ -618,22 +888,6 @@ const Bank = (function () {
     }
 
     /* ---------- 新增 Modal ---------- */
-
-    function buildOptionRow({ text = '', isTrue = false, order = 0 } = {}) {
-        const item = document.createElement('div');
-        item.className = 'option-edit-item';
-        item.innerHTML = `
-            <input type="checkbox" class="add-opt-correct" ${isTrue ? 'checked' : ''} title="正確答案">
-            <input type="text" class="add-opt-text" placeholder="選項內容" value="${escapeAttr(text)}">
-            <input type="number" class="add-opt-order" value="${order}" min="0" title="order">
-            <button type="button" class="opt-remove" title="刪除選項">✕</button>
-        `;
-        item.querySelector('.opt-remove').onclick = () => {
-            if (addOptionsList.children.length <= 2) return alert('至少需保留兩個選項');
-            item.remove();
-        };
-        addOptionsList.appendChild(item);
-    }
 
     async function openAddModal(presetBank = null) {
         const banks = await QuizDB.getBanks();
@@ -653,10 +907,17 @@ const Bank = (function () {
             addNewBankInput.classList.remove('hidden');
         }
         addNewBankInput.value = '';
+        addTypeSelect.value = 'single';
         document.getElementById('add-question-text').value = '';
         document.getElementById('add-description').value = '';
+
         addOptionsList.innerHTML = '';
-        [0, 1, 2, 3].forEach(() => buildOptionRow());
+        [0, 1, 2, 3].forEach(() => buildOptionRow(addOptionsList));
+
+        addBlanksList.innerHTML = '';
+        buildBlankRow(addBlanksList);
+
+        updateModalTypeUI('add', 'single');
 
         addModal.classList.add('show');
         overlay.classList.add('show');
@@ -677,26 +938,44 @@ const Bank = (function () {
             if (!bank) return alert('請輸入新題庫名稱');
         }
 
-        const rows = addOptionsList.querySelectorAll('.option-edit-item');
-        const options = [];
-        let hasCorrect = false;
-        rows.forEach(r => {
-            const text = r.querySelector('.add-opt-text').value.trim();
-            if (!text) return;
-            const isTrue = r.querySelector('.add-opt-correct').checked;
-            const order = parseInt(r.querySelector('.add-opt-order').value, 10) || 0;
-            const o = { order, text };
-            if (isTrue) { o.true = true; hasCorrect = true; }
-            options.push(o);
-        });
-        if (options.length < 2) return alert('至少需要兩個選項');
-        if (!hasCorrect) return alert('請至少勾選一個正確答案');
+        const type = addTypeSelect.value;
+        const description = document.getElementById('add-description').value.trim();
+        let options = [];
+        let answers = [];
+
+        if (type === 'fill') {
+            const blankItems = addBlanksList.querySelectorAll('.blank-edit-item');
+            blankItems.forEach(it => {
+                const raw = it.querySelector('.blank-edit-text').value.trim();
+                if (raw) {
+                    const ansList = raw.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+                    if (ansList.length > 0) answers.push(ansList);
+                }
+            });
+            if (answers.length === 0) return alert('填充題至少需要設定一個空格答案');
+        } else {
+            const rows = addOptionsList.querySelectorAll('.option-edit-item');
+            let hasCorrect = false;
+            rows.forEach(r => {
+                const text = r.querySelector('.opt-text').value.trim();
+                if (!text) return;
+                const isTrue = r.querySelector('.opt-correct').checked;
+                const order = parseInt(r.querySelector('.opt-order').value, 10) || 0;
+                const o = { order, text };
+                if (isTrue) { o.true = true; hasCorrect = true; }
+                options.push(o);
+            });
+            if (options.length < 2) return alert('至少需要兩個選項');
+            if (!hasCorrect) return alert('請至少勾選一個正確答案');
+        }
 
         await QuizDB.add({
             questionBank: bank,
             question,
+            type,
             options,
-            description: document.getElementById('add-description').value.trim(),
+            answers,
+            description,
         });
 
         if (document.getElementById('add-keep-open').checked) {
@@ -711,7 +990,7 @@ const Bank = (function () {
     /* ---------- 工具 ---------- */
 
     function escapeAttr(s) {
-        return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     /* ---------- 初始化 ---------- */
@@ -722,17 +1001,40 @@ const Bank = (function () {
         addModal = document.getElementById('add-modal');
         addBankSelect = document.getElementById('add-bank-select');
         addNewBankInput = document.getElementById('add-new-bank-name');
+
+        editTypeSelect = document.getElementById('edit-type-select');
+        editOptionsArea = document.getElementById('edit-options-area');
+        editBlanksArea = document.getElementById('edit-blanks-area');
+        editOptionsList = document.getElementById('edit-options-list');
+        editBlanksList = document.getElementById('edit-blanks-list');
+
+        addTypeSelect = document.getElementById('add-type-select');
+        addOptionsArea = document.getElementById('add-options-area');
+        addBlanksArea = document.getElementById('add-blanks-area');
         addOptionsList = document.getElementById('add-options-list');
+        addBlanksList = document.getElementById('add-blanks-list');
 
         document.getElementById('record-bank-filter').addEventListener('change', render);
         document.getElementById('record-sort-filter').addEventListener('change', render);
 
+        // 題型切換事件
+        if (editTypeSelect) {
+            editTypeSelect.addEventListener('change', (e) => updateModalTypeUI('edit', e.target.value));
+        }
+        if (addTypeSelect) {
+            addTypeSelect.addEventListener('change', (e) => updateModalTypeUI('add', e.target.value));
+        }
+
         document.getElementById('edit-cancel').addEventListener('click', closeEditModal);
         document.getElementById('edit-save').addEventListener('click', saveEdit);
+        document.getElementById('edit-option-btn').addEventListener('click', () => buildOptionRow(editOptionsList, {}, true));
+        document.getElementById('edit-blank-btn').addEventListener('click', () => buildBlankRow(editBlanksList));
 
         document.getElementById('add-cancel').addEventListener('click', closeAddModal);
         document.getElementById('add-save').addEventListener('click', saveNew);
-        document.getElementById('add-option-btn').addEventListener('click', () => buildOptionRow());
+        document.getElementById('add-option-btn').addEventListener('click', () => buildOptionRow(addOptionsList));
+        document.getElementById('add-blank-btn').addEventListener('click', () => buildBlankRow(addBlanksList));
+
         addBankSelect.addEventListener('change', () => {
             addNewBankInput.classList.toggle('hidden', addBankSelect.value !== 'new');
         });

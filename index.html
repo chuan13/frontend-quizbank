@@ -85,6 +85,7 @@
                 <div id="view-quiz" class="card hidden">
                     <div class="quiz-header">
                         <span id="quiz-bank-name">題庫：無</span>
+                        <span id="quiz-type-badge" class="type-badge">單選</span>
                         <span id="quiz-progress">題號：0</span>
                         <span id="quiz-stats-count">次數：0</span>
                     </div>
@@ -187,12 +188,28 @@
             <div class="modal-header">編輯題目</div>
             <div class="modal-body">
                 <div class="config-group">
-                    <label>題目文字</label>
-                    <textarea id="edit-question-text" rows="3"></textarea>
+                    <label>題型</label>
+                    <select id="edit-type-select">
+                        <option value="single">單選題 (single)</option>
+                        <option value="multi">複選題 (multi)</option>
+                        <option value="fill">填充題 (fill)</option>
+                    </select>
                 </div>
                 <div class="config-group">
-                    <label>選項 (勾選＝正確答案)</label>
+                    <label>題目文字</label>
+                    <textarea id="edit-question-text" rows="3" placeholder="請輸入題目...（填空題請用 {{1}}, {{2}} 挖空）"></textarea>
+                </div>
+                <div id="edit-options-area" class="config-group">
+                    <label id="edit-options-label">選項 (勾選＝正確答案)</label>
                     <div id="edit-options-list" class="options-edit-list"></div>
+                    <button type="button" class="modal-btn secondary" id="edit-option-btn"
+                        style="align-self: flex-start; margin-top: 6px;">+ 新增選項</button>
+                </div>
+                <div id="edit-blanks-area" class="config-group hidden">
+                    <label>空格答案 (多個可接受答案請以逗號 , 分隔)</label>
+                    <div id="edit-blanks-list" class="options-edit-list"></div>
+                    <button type="button" class="modal-btn secondary" id="edit-blank-btn"
+                        style="align-self: flex-start; margin-top: 6px;">+ 新增空格</button>
                 </div>
                 <div class="config-group">
                     <label>說明文字 (詳解)</label>
@@ -216,14 +233,28 @@
                     <input type="text" id="add-new-bank-name" placeholder="請輸入新題庫名稱">
                 </div>
                 <div class="config-group">
-                    <label>題目文字</label>
-                    <textarea id="add-question-text" rows="3" placeholder="請輸入題目..."></textarea>
+                    <label>題型</label>
+                    <select id="add-type-select">
+                        <option value="single">單選題 (single)</option>
+                        <option value="multi">複選題 (multi)</option>
+                        <option value="fill">填充題 (fill)</option>
+                    </select>
                 </div>
                 <div class="config-group">
-                    <label>選項 (勾選＝正確答案；order 0=隨機，1+=固定順序)</label>
+                    <label>題目文字</label>
+                    <textarea id="add-question-text" rows="3" placeholder="請輸入題目...（填空題請用 {{1}}, {{2}} 挖空）"></textarea>
+                </div>
+                <div id="add-options-area" class="config-group">
+                    <label id="add-options-label">選項 (勾選＝正確答案；order 0=隨機，1+=固定順序)</label>
                     <div id="add-options-list" class="options-edit-list"></div>
                     <button type="button" class="modal-btn secondary" id="add-option-btn"
                         style="align-self: flex-start; margin-top: 6px;">+ 新增選項</button>
+                </div>
+                <div id="add-blanks-area" class="config-group hidden">
+                    <label>空格答案 (多個可接受答案請以逗號 , 分隔)</label>
+                    <div id="add-blanks-list" class="options-edit-list"></div>
+                    <button type="button" class="modal-btn secondary" id="add-blank-btn"
+                        style="align-self: flex-start; margin-top: 6px;">+ 新增空格</button>
                 </div>
                 <div class="config-group">
                     <label>說明文字 (詳解，可選)</label>

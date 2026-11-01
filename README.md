@@ -66,17 +66,18 @@ QuizDB.clearAll()                          // -> Promise<void>
 
 ```ts
 {
-  id: number,             // 自動產生
-  questionBank: string,   // 題庫名稱
-  questionNumber: number, // 題庫內的題號
-  type: 'single',
-  correct: number,        // 累計答對次數
-  fail: number,           // 累計答錯次數
-  question: string,
-  options: [
+  id: number,                     // 自動產生
+  questionBank: string,           // 題庫名稱
+  questionNumber: number,         // 題庫內的題號
+  type: 'single' | 'multi' | 'fill', // 題型：單選、複選、填充
+  correct: number,                // 累計答對次數
+  fail: number,                   // 累計答錯次數
+  question: string,               // 題目本文（填空題以 {{1}}, {{2}} 挖空）
+  options?: [                     // 選擇題選項（單選與複選）
     { order: number, text: string, true?: true }  // order 0=隨機；1+=固定順序
   ],
-  description: string,    // 詳解
+  answers?: string[][],           // 填充題各空格可接受答案二維陣列
+  description: string,            // 詳解
 }
 ```
 
