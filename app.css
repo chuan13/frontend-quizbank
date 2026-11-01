@@ -576,3 +576,59 @@ main.quiz-active { padding-bottom: 100px; }
 .danger-btn.danger-strong:hover { filter: brightness(1.1); background: var(--error); }
 
 .hint-text { font-size: 0.8rem; color: var(--text-light); margin: 6px 4px 4px; }
+
+/* =========================================
+   題庫匯出 Modal
+   ========================================= */
+.export-options-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 4px 0;
+}
+
+.checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    color: var(--text);
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.export-textarea {
+    width: 100%;
+    height: 200px;
+    background: #2c2c2c;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    color: var(--text);
+    font-family: Consolas, Monaco, "Courier New", Courier, monospace;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    resize: none;
+    white-space: pre;
+    overflow: auto;
+}
+
+.export-modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.export-action-btns {
+    display: flex;
+    gap: 8px;
+}
+

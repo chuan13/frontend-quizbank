@@ -1137,6 +1137,11 @@ const Bank = (function () {
                 remarkModal.classList.remove('show');
                 overlay.classList.remove('show');
             }
+            const exportModal = document.getElementById('export-modal');
+            if (exportModal && exportModal.classList.contains('show')) {
+                exportModal.classList.remove('show');
+                overlay.classList.remove('show');
+            }
         });
     }
 
@@ -1249,6 +1254,8 @@ const Importer = (function () {
    6. Maint（原 part4）：狀態與維護
    ========================================= */
 const Maint = (function () {
+    let overlay, exportModal, exportBankSelect, exportOptRemark, exportOptStats, exportJsonTextarea, exportCopyBtn, exportDownloadBtn;
+
     async function refresh() {
         const all = await QuizDB.getAll();
         document.getElementById('stat-total').textContent = all.length;
@@ -1290,9 +1297,157 @@ const Maint = (function () {
         refresh();
     }
 
+    /* ---------- 匯出題庫 ---------- */
+
+    async function openExportModal() {
+        const banks = await QuizDB.getBanks();
+        if (banks.length === 0) {
+            alert('目前資料庫尚無題庫可供匯出，請先匯入或新增題目。');
+            return;
+        }
+
+        exportBankSelect.innerHTML = '';
+        banks.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b;
+            opt.textContent = b;
+            exportBankSelect.appendChild(opt);
+        });
+
+        exportModal.classList.add('show');
+        overlay.classList.add('show');
+
+        await updateExportJson();
+    }
+
+    function closeExportModal() {
+        exportModal.classList.remove('show');
+        overlay.classList.remove('show');
+    }
+
+    async function updateExportJson() {
+        const selectedBank = exportBankSelect.value;
+        if (!selectedBank) {
+            exportJsonTextarea.value = '';
+            return;
+        }
+
+        const includeRemark = exportOptRemark.checked;
+        const includeStats = exportOptStats.checked;
+
+        const all = await QuizDB.getAll();
+        const bankQuestions = all
+            .filter(q => q.questionBank === selectedBank)
+            .sort((a, b) => (a.questionNumber || 0) - (b.questionNumber || 0));
+
+        const exportData = bankQuestions.map(q => {
+            const item = {
+                type: q.type || 'single',
+                question: q.question || '',
+            };
+
+            if (item.type === 'fill') {
+                item.answers = q.answers || [];
+            } else {
+                item.options = (q.options || []).map(opt => {
+                    const cleanOpt = {
+                        order: typeof opt.order === 'number' ? opt.order : 0,
+                        text: opt.text || ''
+                    };
+                    if (opt.true) {
+                        cleanOpt.true = true;
+                    }
+                    return cleanOpt;
+                });
+            }
+
+            if (q.description) {
+                item.description = q.description;
+            }
+
+            if (includeRemark && q.remark) {
+                item.remark = q.remark;
+            }
+
+            if (includeStats) {
+                const correct = q.correct || 0;
+                const fail = q.fail || 0;
+                item.attempts = correct + fail;
+                item.fail = fail;
+                item.correct = correct;
+            }
+
+            return item;
+        });
+
+        exportJsonTextarea.value = JSON.stringify(exportData, null, 2);
+    }
+
+    async function copyToClipboard() {
+        const content = exportJsonTextarea.value;
+        if (!content) return;
+
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(content);
+            } else {
+                exportJsonTextarea.select();
+                document.execCommand('copy');
+            }
+            const originalText = exportCopyBtn.textContent;
+            exportCopyBtn.textContent = '已複製！';
+            setTimeout(() => {
+                exportCopyBtn.textContent = originalText;
+            }, 1500);
+        } catch (err) {
+            console.error('複製失敗：', err);
+            alert('複製失敗，請手動複製文字框內容。');
+        }
+    }
+
+    function downloadJsonFile() {
+        const content = exportJsonTextarea.value;
+        if (!content) return;
+
+        const bankName = exportBankSelect.value || 'quizbank';
+        const safeFilename = `${bankName.replace(/[/\\?%*:|"<>]/g, '_')}.json`;
+
+        const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = safeFilename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
     function init() {
+        overlay = document.getElementById('overlay');
+        exportModal = document.getElementById('export-modal');
+        exportBankSelect = document.getElementById('export-bank-select');
+        exportOptRemark = document.getElementById('export-opt-remark');
+        exportOptStats = document.getElementById('export-opt-stats');
+        exportJsonTextarea = document.getElementById('export-json-textarea');
+        exportCopyBtn = document.getElementById('export-copy-btn');
+        exportDownloadBtn = document.getElementById('export-download-btn');
+
         document.getElementById('btn-reset-fails').addEventListener('click', resetFails);
         document.getElementById('btn-clear-all').addEventListener('click', clearAll);
+
+        const btnOpenExport = document.getElementById('btn-open-export');
+        if (btnOpenExport) btnOpenExport.addEventListener('click', openExportModal);
+
+        const btnCloseExport = document.getElementById('export-modal-close');
+        if (btnCloseExport) btnCloseExport.addEventListener('click', closeExportModal);
+
+        if (exportBankSelect) exportBankSelect.addEventListener('change', updateExportJson);
+        if (exportOptRemark) exportOptRemark.addEventListener('change', updateExportJson);
+        if (exportOptStats) exportOptStats.addEventListener('change', updateExportJson);
+
+        if (exportCopyBtn) exportCopyBtn.addEventListener('click', copyToClipboard);
+        if (exportDownloadBtn) exportDownloadBtn.addEventListener('click', downloadJsonFile);
     }
 
     return { init, onShow: refresh };

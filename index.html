@@ -171,6 +171,12 @@
                 </div>
 
                 <div class="card">
+                    <h2>📤 題庫匯出</h2>
+                    <button class="action-btn" id="btn-open-export" style="margin-top:0;">匯出題庫 JSON</button>
+                    <p class="hint-text">選擇題庫並匯出為標準 JSON，可自選是否包含備註或答題記錄。</p>
+                </div>
+
+                <div class="card">
                     <h2>🧹 資料維護</h2>
                     <button class="danger-btn" id="btn-reset-fails">清空所有錯題紀錄</button>
                     <p class="hint-text">將每題的 fail 計數歸零，題目不會被刪除。</p>
@@ -302,6 +308,41 @@
             <div class="modal-footer">
                 <button class="modal-btn secondary" id="remark-modal-cancel">取消</button>
                 <button class="modal-btn primary" id="remark-modal-save">儲存備註</button>
+            </div>
+        </div>
+
+        <!-- 狀態與維護：匯出題庫 Modal -->
+        <div class="modal" id="export-modal">
+            <div class="modal-header">匯出題庫</div>
+            <div class="modal-body">
+                <div class="config-group">
+                    <label for="export-bank-select">選擇題庫</label>
+                    <select id="export-bank-select"></select>
+                </div>
+                <div class="config-group">
+                    <label>匯出選項</label>
+                    <div class="export-options-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="export-opt-remark" checked>
+                            包含備註
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="export-opt-stats">
+                            包含答題記錄
+                        </label>
+                    </div>
+                </div>
+                <div class="config-group">
+                    <label for="export-json-textarea">JSON 預覽</label>
+                    <textarea id="export-json-textarea" class="export-textarea" readonly placeholder="選擇題庫後產生 JSON..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer export-modal-footer">
+                <button class="modal-btn secondary" id="export-modal-close">關閉</button>
+                <div class="export-action-btns">
+                    <button class="modal-btn secondary" id="export-copy-btn">複製到剪貼簿</button>
+                    <button class="modal-btn primary" id="export-download-btn">下載為 json 檔案</button>
+                </div>
             </div>
         </div>
     </div>
