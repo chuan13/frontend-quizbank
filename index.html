@@ -13,44 +13,62 @@
 <body>
     <div class="app-container">
         <header>
-            <button class="back-btn invisible" id="nav-back">← 首頁</button>
-            <span id="header-title">Frontend Quizbank</span>
-            <span class="spacer"></span>
+            <button class="back-btn invisible" id="nav-back">&lt; 離開</button>
+            <span id="header-title">開始測驗</span>
+            <button class="menu-btn" id="menu-btn" aria-label="選單">
+                <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
         </header>
 
+        <!-- 側邊抽屜選單 -->
+        <div class="drawer-overlay" id="drawer-overlay"></div>
+        <aside class="drawer" id="drawer">
+            <div class="drawer-header">
+                <span class="drawer-title">Frontend Quizbank</span>
+                <button class="drawer-close-btn" id="drawer-close-btn" aria-label="關閉選單">✕</button>
+            </div>
+            <nav class="drawer-nav">
+                <button class="drawer-item" data-nav="quiz">
+                    <span class="drawer-item-icon">📝</span>
+                    <div class="drawer-item-info">
+                        <span class="drawer-item-title">開始測驗</span>
+                        <span class="drawer-item-desc">出題、答題、回饋與統計</span>
+                    </div>
+                </button>
+                <button class="drawer-item" data-nav="bank">
+                    <span class="drawer-item-icon">📚</span>
+                    <div class="drawer-item-info">
+                        <span class="drawer-item-title">題庫管理</span>
+                        <span class="drawer-item-desc">查看、編輯、UI 新增題目</span>
+                    </div>
+                </button>
+                <button class="drawer-item" data-nav="import">
+                    <span class="drawer-item-icon">📥</span>
+                    <div class="drawer-item-info">
+                        <span class="drawer-item-title">JSON 匯入</span>
+                        <span class="drawer-item-desc">檔案或貼上文字批次匯入</span>
+                    </div>
+                </button>
+                <button class="drawer-item" data-nav="maint">
+                    <span class="drawer-item-icon">⚙️</span>
+                    <div class="drawer-item-info">
+                        <span class="drawer-item-title">狀態與維護</span>
+                        <span class="drawer-item-desc">資料庫狀態、清空紀錄</span>
+                    </div>
+                </button>
+            </nav>
+            <div class="drawer-footer">
+                <div class="drawer-db-status" id="drawer-db-status">資料庫載入中...</div>
+            </div>
+        </aside>
+
         <main>
-            <!-- ============ 首頁 ============ -->
-            <section id="page-home" class="view">
-                <p class="db-status" id="db-status">資料庫載入中...</p>
-
-                <div class="part-grid">
-                    <a class="part-card" data-nav="quiz">
-                        <div class="part-icon">📝</div>
-                        <div class="part-title">開始測驗</div>
-                        <div class="part-desc">出題、答題、回饋與統計</div>
-                    </a>
-                    <a class="part-card" data-nav="bank">
-                        <div class="part-icon">📚</div>
-                        <div class="part-title">題庫管理</div>
-                        <div class="part-desc">查看、編輯、UI 新增題目</div>
-                    </a>
-                    <a class="part-card" data-nav="import">
-                        <div class="part-icon">📥</div>
-                        <div class="part-title">JSON 匯入</div>
-                        <div class="part-desc">檔案或貼上文字批次匯入</div>
-                    </a>
-                    <a class="part-card" data-nav="maint">
-                        <div class="part-icon">⚙️</div>
-                        <div class="part-title">狀態與維護</div>
-                        <div class="part-desc">資料庫狀態、清空紀錄</div>
-                    </a>
-                </div>
-
-                <p class="hint">純前端 IndexedDB 題庫系統，所有功能共用同一個資料庫（QuizDB）。</p>
-            </section>
-
             <!-- ============ 測驗（原 part1） ============ -->
-            <section id="page-quiz" class="view hidden">
+            <section id="page-quiz" class="view">
                 <div id="view-config" class="card">
                     <h2>開始測驗</h2>
                     <p id="empty-hint" class="hint hidden">目前資料庫沒有題目，請先到「JSON 匯入」或「題庫管理」新增。</p>

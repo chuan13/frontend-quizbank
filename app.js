@@ -197,20 +197,21 @@ function renderMath(element) {
 })();
 
 /* =========================================
-   2. Home：首頁資料庫狀態
+   2. Home：資料庫狀態（抽屜）
    ========================================= */
 const Home = (function () {
-    async function onShow() {
+    async function updateStatus() {
         const all = await QuizDB.getAll();
         const banks = [...new Set(all.map(q => q.questionBank))];
-        const el = document.getElementById('db-status');
+        const el = document.getElementById('drawer-db-status');
+        if (!el) return;
         if (all.length === 0) {
-            el.textContent = '目前資料庫為空，可從「JSON 匯入」開始。';
+            el.textContent = '目前資料庫為空，可由「JSON 匯入」開始。';
         } else {
             el.innerHTML = `目前共 <b>${all.length}</b> 題，分布於 <b>${banks.length}</b> 個題庫。`;
         }
     }
-    return { init() { }, onShow };
+    return { init() { updateStatus(); }, updateStatus };
 })();
 
 /* =========================================
@@ -342,6 +343,12 @@ const Quiz = (function () {
         closeRemarkModal();
         quizQueue = [];
         currentQ = null;
+
+        const navBack = document.getElementById('nav-back');
+        if (navBack && typeof Router !== 'undefined' && Router.getCurrent() === 'quiz') {
+            navBack.classList.add('invisible');
+            navBack.textContent = '< 離開';
+        }
     }
 
     /**
@@ -431,6 +438,11 @@ const Quiz = (function () {
         document.getElementById('view-config').classList.add('hidden');
         document.getElementById('view-quiz').classList.remove('hidden');
         document.getElementById('bottom-bar').classList.add('show');
+        const navBack = document.getElementById('nav-back');
+        if (navBack) {
+            navBack.classList.remove('invisible');
+            navBack.textContent = '< 離開';
+        }
         loadNextQuestion();
     }
 
@@ -770,7 +782,7 @@ const Quiz = (function () {
         await refreshConfigUI();
     }
 
-    return { init, onShow };
+    return { init, onShow, resetToConfig };
 })();
 
 /* =========================================
@@ -1512,28 +1524,55 @@ const Maint = (function () {
    7. Router：單頁換頁
    ========================================= */
 const Router = (function () {
+    let currentPage = 'quiz';
     const titles = {
-        home: 'Frontend Quizbank',
-        quiz: '測驗',
+        quiz: '開始測驗',
         bank: '題庫管理',
         import: 'JSON 匯入',
         maint: '狀態與維護',
     };
-    const parts = { home: Home, quiz: Quiz, bank: Bank, import: Importer, maint: Maint };
+    const parts = { quiz: Quiz, bank: Bank, import: Importer, maint: Maint };
 
     function show(name) {
+        if (!parts[name]) name = 'quiz';
+        currentPage = name;
+
         document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
-        document.getElementById('page-' + name).classList.remove('hidden');
-        document.getElementById('header-title').textContent = titles[name];
-        document.getElementById('nav-back').classList.toggle('invisible', name === 'home');
+        const targetView = document.getElementById('page-' + name);
+        if (targetView) targetView.classList.remove('hidden');
+
+        document.getElementById('header-title').textContent = titles[name] || '開始測驗';
+
+        const navBack = document.getElementById('nav-back');
+        if (navBack) {
+            // 只有在測驗作答中才顯示「< 離開」，其他一級模組全部隱藏保持置中
+            const isQuizzing = name === 'quiz' && !document.getElementById('view-quiz').classList.contains('hidden');
+            navBack.classList.toggle('invisible', !isQuizzing);
+            navBack.textContent = '< 離開';
+        }
+
         document.querySelector('main').classList.toggle('quiz-active', name === 'quiz');
-        if (name !== 'quiz') document.getElementById('bottom-bar').classList.remove('show');
+        if (name !== 'quiz') {
+            document.getElementById('bottom-bar').classList.remove('show');
+        } else {
+            const isQuizzing = !document.getElementById('view-quiz').classList.contains('hidden');
+            document.getElementById('bottom-bar').classList.toggle('show', isQuizzing);
+        }
+
+        // 更新抽屜內項目的 active 狀態
+        document.querySelectorAll('.drawer-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.nav === name);
+        });
 
         const part = parts[name];
         if (part && part.onShow) part.onShow();
     }
 
-    return { show };
+    function getCurrent() {
+        return currentPage;
+    }
+
+    return { show, getCurrent };
 })();
 
 /* =========================================
@@ -1548,10 +1587,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     Importer.init();
     Maint.init();
 
-    document.getElementById('nav-back').addEventListener('click', () => Router.show('home'));
-    document.querySelectorAll('[data-nav]').forEach(el => {
-        el.addEventListener('click', () => Router.show(el.dataset.nav));
+    // 抽屜選單元素
+    const drawer = document.getElementById('drawer');
+    const drawerOverlay = document.getElementById('drawer-overlay');
+    const menuBtn = document.getElementById('menu-btn');
+    const drawerCloseBtn = document.getElementById('drawer-close-btn');
+
+    function openDrawer() {
+        if (drawer) drawer.classList.add('open');
+        if (drawerOverlay) drawerOverlay.classList.add('open');
+        Home.updateStatus();
+    }
+
+    function closeDrawer() {
+        if (drawer) drawer.classList.remove('open');
+        if (drawerOverlay) drawerOverlay.classList.remove('open');
+    }
+
+    if (menuBtn) menuBtn.addEventListener('click', openDrawer);
+    if (drawerCloseBtn) drawerCloseBtn.addEventListener('click', closeDrawer);
+    if (drawerOverlay) drawerOverlay.addEventListener('click', closeDrawer);
+
+    // ESC 鍵關閉抽屜
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && drawer && drawer.classList.contains('open')) {
+            closeDrawer();
+        }
     });
 
-    Router.show('home');
+    document.getElementById('nav-back').addEventListener('click', () => {
+        if (Router.getCurrent() === 'quiz' && !document.getElementById('view-quiz').classList.contains('hidden')) {
+            Quiz.resetToConfig();
+        }
+    });
+
+    document.querySelectorAll('[data-nav]').forEach(el => {
+        el.addEventListener('click', () => {
+            closeDrawer();
+            Router.show(el.dataset.nav);
+        });
+    });
+
+    // 預設進入「開始測驗」頁
+    Router.show('quiz');
 });
