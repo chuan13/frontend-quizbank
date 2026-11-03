@@ -26,6 +26,40 @@ function escapeHtml(s) {
 }
 
 /**
+ * 格式化文字內容：支援 Markdown 行內程式碼 (`...`)、多行程式碼區塊 (```...```) 與 <code>...</code> 標籤。
+ * 格式化後的程式碼標籤會被 KaTeX 的 ignoredTags 自動忽略，避免行內 $ 被誤判為 LaTeX 數學公式。
+ *
+ * @param {string} s - 輸入字串
+ * @param {{ isFill?: boolean }} [options] - 選項，如是否為填充題需要替換 {{1}}
+ * @returns {string} 轉義並包含安全標籤的 HTML 字串
+ */
+function formatContent(s, { isFill = false } = {}) {
+    if (!s) return '';
+    let safe = escapeHtml(String(s));
+
+    // 支援已存在的 <code> 與 <pre><code> 標籤（先被 escapeHtml 轉成實體者）
+    safe = safe.replace(/&lt;pre&gt;&lt;code&gt;([\s\S]*?)&lt;\/code&gt;&lt;\/pre&gt;/gi, '<pre class="code-block"><code>$1</code></pre>');
+    safe = safe.replace(/&lt;code&gt;([\s\S]*?)&lt;\/code&gt;/gi, '<code class="inline-code">$1</code>');
+
+    // 支援 Markdown 多行程式碼區塊 ```...```，自動忽略第一行的語言識別字（如 ```php 或 ```html）
+    safe = safe.replace(/```(?:[a-zA-Z0-9_\-+]*[ \t]*(?:\r\n|\r|\n))?([\s\S]*?)```/g, (match, code) => {
+        const cleanCode = code.replace(/[\r\n]+$/, '');
+        return `<pre class="code-block"><code>${cleanCode}</code></pre>`;
+    });
+
+    // 支援 Markdown 行內程式碼 `...`
+    safe = safe.replace(/`([^`\r\n]+)`/g, '<code class="inline-code">$1</code>');
+
+    // 填充題題目空格
+    if (isFill) {
+        safe = safe.replace(/\{\{(\d+)\}\}/g, '<span class="blank-slot-badge">($1)</span>');
+    }
+
+    return safe;
+}
+
+
+/**
  * 渲染指定 HTML 元素中的 LaTeX 數學公式。
  * 內部呼叫 KaTeX 提供的 renderMathInElement API，如果 KaTeX 資源尚未載入則不執行任何動作。
  *
@@ -478,12 +512,8 @@ const Quiz = (function () {
         }
 
         const qEl = document.getElementById('question-text');
-        if (qType === 'fill' || /\{\{\d+\}\}/.test(currentQ.question)) {
-            const escaped = escapeHtml(currentQ.question);
-            qEl.innerHTML = escaped.replace(/\{\{(\d+)\}\}/g, '<span class="blank-slot-badge">($1)</span>');
-        } else {
-            qEl.textContent = currentQ.question;
-        }
+        const isFill = qType === 'fill' || /\{\{\d+\}\}/.test(currentQ.question);
+        qEl.innerHTML = formatContent(currentQ.question, { isFill });
         renderMath(qEl);
         
         document.getElementById('feedback-box').classList.remove('show');
@@ -517,7 +547,7 @@ const Quiz = (function () {
         opts.forEach(option => {
             const optBtn = document.createElement('button');
             optBtn.className = qType === 'multi' ? 'option-btn multi-choice' : 'option-btn';
-            optBtn.textContent = option.text;
+            optBtn.innerHTML = formatContent(option.text);
             /** @type {any} */ (optBtn)._optionData = option;
             if (qType === 'multi') {
                 optBtn.onclick = () => toggleMultiOption(optBtn, option);
@@ -683,7 +713,7 @@ const Quiz = (function () {
             }
             
             const fdEl = document.getElementById('feedback-desc');
-            fdEl.textContent = currentQ.description || '無詳解';
+            fdEl.innerHTML = formatContent(currentQ.description || '無詳解');
             renderMath(fdEl);
 
             document.getElementById('feedback-box').classList.add('show');
@@ -692,7 +722,7 @@ const Quiz = (function () {
             const remarkBox = document.getElementById('remark-box');
             const remarkText = document.getElementById('remark-text');
             if (currentQ.remark && currentQ.remark.trim()) {
-                remarkText.textContent = currentQ.remark.trim();
+                remarkText.innerHTML = formatContent(currentQ.remark.trim());
                 renderMath(remarkText);
                 remarkBox.classList.add('show');
             } else {
@@ -712,7 +742,7 @@ const Quiz = (function () {
 
     function openRemarkModal() {
         if (!currentQ) return;
-        if (remarkModalQuestion) remarkModalQuestion.textContent = currentQ.question;
+        if (remarkModalQuestion) remarkModalQuestion.innerHTML = formatContent(currentQ.question);
         if (remarkModalText) remarkModalText.value = currentQ.remark || '';
         if (remarkModal) remarkModal.classList.add('show');
         const overlay = document.getElementById('overlay');
@@ -741,7 +771,7 @@ const Quiz = (function () {
         const remarkBox = document.getElementById('remark-box');
         const remarkText = document.getElementById('remark-text');
         if (newRemark) {
-            remarkText.textContent = newRemark;
+            remarkText.innerHTML = formatContent(newRemark);
             renderMath(remarkText);
             remarkBox.classList.add('show');
         } else {
